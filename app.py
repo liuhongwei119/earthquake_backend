@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 import config
 from blueprints.offline_mysql_curve import bp as offline_mysql_curve_bp
 from gevent import pywsgi
+from flask_cors import CORS
 
 app = Flask(__name__)
 # 绑定配置文件
@@ -23,5 +24,7 @@ def hello_world():  # put application's code here
 
 
 if __name__ == '__main__':
+    #通过CORS，所有的来源都允许跨域访问
+    CORS(app, resources=r'/*')
     server = pywsgi.WSGIServer(('0.0.0.0', 1123), app)
     server.serve_forever()

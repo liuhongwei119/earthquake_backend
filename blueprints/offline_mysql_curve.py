@@ -14,8 +14,11 @@ def search():
     if request.method == 'GET':
         curve_id = request.args.get("curve_id")
     curve_info = EarthCurveModel.query.filter_by(curve_id=curve_id).first()
-    return jsonify({"status": 200, "curve_info": curve_info.convert_to_json_res()})
-
+    rst = jsonify({"status": 200, "curve_info": curve_info.convert_to_json_res()})
+    rst.headers['Access-Control-Allow-Origin'] = '*'
+    rst.headers['Access-Control-Allow-Method'] = 'POST'  # 如果该请求是get，把POST换成GET即可
+    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+    return rst
 
 
 @bp.route("/upload", methods=['GET'])
