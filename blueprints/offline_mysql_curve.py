@@ -16,7 +16,7 @@ def search():
     curve_info = EarthCurveModel.query.filter_by(curve_id=curve_id).first()
     rst = jsonify({"status": 200, "curve_info": curve_info.convert_to_json_res()})
     rst.headers['Access-Control-Allow-Origin'] = '*'
-    rst.headers['Access-Control-Allow-Method'] = 'POST'  # 如果该请求是get，把POST换成GET即可
+    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
     rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
     return rst
 
