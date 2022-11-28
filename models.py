@@ -28,7 +28,7 @@ class EarthCurveModel(db.Model):
         curve_dict = self.__dict__.copy()
         print(curve_dict)
         del curve_dict["_sa_instance_state"]
-        curve_dict["curve_data"] = list(curve_dict["curve_data"].split(","))
+        curve_dict["curve_data"] = list(map(int, list(curve_dict["curve_data"].split(","))))
         curve_dict["start_time"] = curve_dict["start_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["end_time"] = curve_dict["end_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["join_time"] = curve_dict["join_time"].strftime("%Y-%m-%d %H:%M:%S")
