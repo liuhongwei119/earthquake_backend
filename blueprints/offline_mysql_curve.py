@@ -34,7 +34,7 @@ def upload():
 
 
 @bp.route("/earthquake/upload", methods=['POST'])
-def upload():
+def earthquake_upload():
     name = request.form.get("name")
     description = request.form.get("description")
     fileObj = request.files.get("file")
