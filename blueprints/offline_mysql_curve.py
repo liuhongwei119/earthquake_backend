@@ -33,6 +33,22 @@ def upload():
     return jsonify({"status": 200, "msg": "update success", "files": files})
 
 
+@bp.route("/earthquake/upload", methods=['POST'])
+def upload():
+    name = request.form.get("name")
+    description = request.form.get("description")
+    fileObj = request.files.get("file")
+    print(name)
+    print(description)
+    print(fileObj)
+    rst = jsonify({"status": 200, "msg": "update success"})
+    rst.headers['Access-Control-Allow-Origin'] = '*'
+    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
+    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+    return rst
+
+
+
 def dump_one(file_path):
     raw_datas = read(file_path)
     # for raw_data in raw_datas:
