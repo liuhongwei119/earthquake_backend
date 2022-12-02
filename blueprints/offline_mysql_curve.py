@@ -71,27 +71,23 @@ def earthquake_offline_upload():
     offline_earthquake_files_path = os.path.join(os.getcwd(), file_prefix)
     if not os.path.exists(offline_earthquake_files_path):
         os.mkdir(offline_earthquake_files_path)
-    if upload_file != None:
+    if upload_file is not None:
         file_name = upload_file.filename
         save_path = os.path.join(offline_earthquake_files_path, file_name)
         print(save_path)
         upload_file.save(save_path)
         dump_one(save_path)
         rst = jsonify({"status": 200, "msg": f"update  {file_name} success"})
-        rst.headers['Access-Control-Allow-Origin'] = '*'
-        rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
-        rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
         return rst
+    else:
+        return jsonify({"status": 400, "msg": f"file is null"})
 
 
 @bp.route("/search", methods=['POST'])
 def earthquake_offline_search():
     curve_id = request.form.get("curve_id")
     curve_info = EarthCurveModel.query.filter_by(curve_id=curve_id).first()
-    rst = jsonify({"status": 200, "curve_info": curve_info.convert_to_json_res()})
-    rst.headers['Access-Control-Allow-Origin'] = '*'
-    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
-    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+    rst = jsonify({"status": 200, "function": "search curve", "res": curve_info.convert_to_json_res()})
     return rst
 
 
@@ -99,12 +95,10 @@ def earthquake_offline_search():
 def earthquake_offline_delete():
     curve_id = request.args.get("curve_id")
     curve_info = EarthCurveModel.query.filter_by(curve_id=curve_id).first()
-    rst = jsonify({"status": 200, "curve_info": curve_info.convert_to_json_res()})
-    rst.headers['Access-Control-Allow-Origin'] = '*'
-    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
-    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+    db.session.delete(curve_info)
+    db.session.commit()
+    rst = jsonify({"status": 200, "function": "delete curve", "res": f"delete curve {curve_info.curve_id} success"})
     return rst
-
 
 
 @bp.route("/searchAll", methods=['GET'])
@@ -117,9 +111,6 @@ def earthquake_offline_search_all():
     return rst
 
 
-
-
-
 if __name__ == '__main__':
     print("1")
-    dump_one( "mseed_data/SF202210160854A-B758-08/XJ.BAC.00.20221016085530.mseed")
+    dump_one("mseed_data/SF202210160854A-B758-08/XJ.BAC.00.20221016085530.mseed")
