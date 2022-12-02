@@ -33,7 +33,7 @@ def upload():
     return jsonify({"status": 200, "msg": "update success", "files": files})
 
 
-@bp.route("/earthquake/upload", methods=['POST'])
+@bp.route("/earthquake/upload", methods=['GET', 'POST'])
 def earthquake_upload():
     name = request.form.get("name")
     description = request.form.get("description")
