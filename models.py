@@ -19,8 +19,8 @@ class EarthCurveModel(db.Model):
     npts = Column(String(100), nullable=False)
     calib = Column(String(100), nullable=False)
     _format = Column(String(100), nullable=False)
-    curve_id = Column(String(100), nullable=False,
-                      unique=True)  # "{network}.{station}.{location}.{channel}_{start_time}_{end_time}"
+    curve_id = Column(String(100), nullable=False)  # "{network}.{station}.{location}.{channel}_{start_time}_{end_time}"
+    file_name = Column(String(100), nullable=False, default="default")
     curve_data = Column(LONGTEXT, nullable=False)
     join_time = Column(DateTime, default=datetime.now)  # func
 
