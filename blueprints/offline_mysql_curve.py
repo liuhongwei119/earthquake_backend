@@ -108,7 +108,7 @@ def earthquake_offline_search_all():
     return rst
 
 @bp.route("/searchAll2", methods=['GET'])
-def earthquake_offline_search_all():
+def earthquake_offline_search_all2():
     curve_infos = EarthCurveModel.query.all()
     curve_res = []
     for curve_info in curve_infos:
