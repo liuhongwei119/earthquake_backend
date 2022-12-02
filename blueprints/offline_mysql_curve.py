@@ -9,7 +9,6 @@ import os
 bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve")
 file_prefix = "offline_earthquake_files"
 
-
 @bp.route("/search", methods=['GET'])
 def search():
     curve_id = ""
@@ -69,9 +68,12 @@ def dump_one(file_path):
 @bp.route("/earthquake/upload", methods=['GET', 'POST'])
 def earthquake_upload():
     upload_file = request.files.get("file")
+    offline_earthquake_files_path = os.path.join(os.getcwd(), file_prefix)
+    if not os.path.exists(offline_earthquake_files_path):
+        os.mkdir(offline_earthquake_files_path)
     if upload_file != None:
         file_name = upload_file.filename
-        save_path = os.path.join(os.getcwd(), file_prefix, file_name)
+        save_path = os.path.join(offline_earthquake_files_path, file_name)
         print(save_path)
         upload_file.save(save_path)
         dump_one(save_path)
