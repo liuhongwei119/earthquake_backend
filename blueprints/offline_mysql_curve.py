@@ -98,10 +98,10 @@ def earthquake_offline_search():
 @bp.route("/searchAll", methods=['GET'])
 def earthquake_offline_search_all():
     curve_infos = EarthCurveModel.query.all()
-    curve_res = []
+    curve_res = {}
     for curve_info in curve_infos:
-        curve_res.append(curve_info.convert_to_json_res())
-    rst = jsonify({"status": 200, "function": "search all earth curve", "curve_res": curve_res})
+        curve_res[curve_info.curve_id] = curve_info.convert_to_json_res()
+    rst = jsonify({"status": 200, "function": "search all earth curve", "datas": curve_res})
     rst.headers['Access-Control-Allow-Origin'] = '*'
     rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
     rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
