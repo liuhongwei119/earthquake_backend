@@ -23,7 +23,7 @@ def search():
     return rst
 
 
-@bp.route("/upload", methods=['GET'])
+@bp.route("/test/upload", methods=['GET'])
 def upload():
     if request.method == 'GET':
         path = request.args.get("path")
@@ -65,7 +65,7 @@ def dump_one(file_path):
     db.session.commit()
 
 
-@bp.route("upload", methods=['GET', 'POST'])
+@bp.route("/upload", methods=['GET', 'POST'])
 def earthquake_offline_upload():
     upload_file = request.files.get("file")
     offline_earthquake_files_path = os.path.join(os.getcwd(), file_prefix)
@@ -84,7 +84,7 @@ def earthquake_offline_upload():
         return rst
 
 
-@bp.route("search", methods=['POST'])
+@bp.route("/search", methods=['POST'])
 def earthquake_offline_search():
     curve_id = request.args.get("curve_id")
     curve_info = EarthCurveModel.query.filter_by(curve_id=curve_id).first()
@@ -95,7 +95,7 @@ def earthquake_offline_search():
     return rst
 
 
-@bp.route("searchAll", methods=['GET'])
+@bp.route("/searchAll", methods=['GET'])
 def earthquake_offline_search_all():
     curve_infos = EarthCurveModel.query.all()
     curve_res = []
