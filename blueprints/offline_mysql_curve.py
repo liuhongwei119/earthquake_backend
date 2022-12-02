@@ -4,8 +4,10 @@ from obspy import read
 from util import convert_utc_to_datetime, get_all_file_in_path
 from flask import request
 from exts import db
+import os
 
 bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve")
+file_prefix = "offline_earthquake_files"
 
 
 @bp.route("/search", methods=['GET'])
@@ -31,22 +33,6 @@ def upload():
     for file in files:
         dump_one(file)
     return jsonify({"status": 200, "msg": "update success", "files": files})
-
-
-@bp.route("/earthquake/upload", methods=['GET', 'POST'])
-def earthquake_upload():
-    name = request.form.get("name")
-    description = request.form.get("description")
-    fileObj = request.files.get("file")
-    print(name)
-    print(description)
-    print(fileObj)
-    rst = jsonify({"status": 200, "msg": "update success"})
-    rst.headers['Access-Control-Allow-Origin'] = '*'
-    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
-    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
-    return rst
-
 
 
 def dump_one(file_path):
@@ -78,6 +64,22 @@ def dump_one(file_path):
                                   )
     db.session.add(earth_curve)
     db.session.commit()
+
+
+@bp.route("/earthquake/upload", methods=['GET', 'POST'])
+def earthquake_upload():
+    upload_file = request.files.get("file")
+    if upload_file != None:
+        file_name = upload_file.filename
+        save_path = os.path.join(os.getcwd(), file_prefix, file_name)
+        print(save_path)
+        upload_file.save(save_path)
+        dump_one(save_path)
+        rst = jsonify({"status": 200, "msg": f"update  {file_name} success"})
+        rst.headers['Access-Control-Allow-Origin'] = '*'
+        rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
+        rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+        return rst
 
 
 if __name__ == '__main__':
