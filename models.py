@@ -23,6 +23,7 @@ class EarthCurveModel(db.Model):
     file_name = Column(String(100), nullable=False, default="default")
     curve_data = Column(LONGTEXT, nullable=False)
     join_time = Column(DateTime, default=datetime.now)  # func
+    # 震源经度，纬度 ，事件类型，事件震级，p波开始时间， 烈度
 
     def convert_to_json_res(self):
         curve_dict = self.__dict__.copy()
