@@ -3,6 +3,8 @@ from exts import db
 from flask_migrate import Migrate
 import config
 from blueprints.offline_mysql_curve import bp as offline_mysql_curve_bp
+from gevent import pywsgi
+from flask_cors import CORS
 
 app = Flask(__name__)
 # 绑定配置文件
@@ -21,5 +23,16 @@ def hello_world():  # put application's code here
     return 'Hello World!'
 
 
+@app.after_request
+def cross_region(rst):
+    rst.headers['Access-Control-Allow-Origin'] = '*'
+    rst.headers['Access-Control-Allow-Method'] = 'GET,POST'  # 如果该请求是get，把POST换成GET即可
+    rst.headers['Access-Control-Allow-Headers'] = 'x-requested-with,content-type'
+    return rst
+
+
 if __name__ == '__main__':
-    app.run()
+    # 通过CORS，所有的来源都允许跨域访问
+    CORS(app, resources=r'/*')
+    server = pywsgi.WSGIServer(('0.0.0.0', 1123), app)
+    server.serve_forever()
