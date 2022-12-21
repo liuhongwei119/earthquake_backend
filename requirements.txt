@@ -1,4 +1,4 @@
-alembic
+alembic~=1.9.0
 blinker
 certifi
 cffi
@@ -14,13 +14,13 @@ dnspython
 docopt
 email-validator
 filelock
-Flask
+Flask~=2.2.2
 Flask-Mail
 Flask-Migrate
 Flask-SQLAlchemy
 Flask-WTF
 fonttools
-gevent
+gevent~=22.10.2
 greenlet
 idna
 importlib-metadata
@@ -32,7 +32,7 @@ Mako
 MarkupSafe
 matplotlib
 numpy
-obspy
+obspy~=1.4.0
 packaging
 Pillow
 pipreqs
@@ -43,7 +43,7 @@ pyparsing
 python-dateutil
 requests
 scipy
-SQLAlchemy
+SQLAlchemy~=1.4.45
 typing_extensions
 urllib3
 virtualenv
@@ -54,3 +54,4 @@ yarg
 zipp
 zope.event
 zope.interface
+pandas~=1.5.2

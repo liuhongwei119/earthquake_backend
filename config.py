@@ -7,10 +7,10 @@ PORT = 3306
 # 连接MySQL的用户名，读者用自己设置的
 USERNAME = "root"
 # 连接MySQL的密码，读者用自己的
-PASSWORD = "769591656Liu"
+PASSWORD = "769591656Liu@"
 # MySQL上创建的数据库名称
 DATABASE = "flask_earthquake"
-DB_URI = f"mysql+pymysql://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}?charset=utf8mb4"
+DB_URI = f"mysql+pymysql://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}?charset=utf8"
 SQLALCHEMY_DATABASE_URI = DB_URI
 
 

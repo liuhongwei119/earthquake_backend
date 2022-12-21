@@ -18,7 +18,7 @@ def get_connection() -> taos.TaosConnection:
     """
     create connection use firstEp in taos.cfg and use default user and password.
     """
-    conn = taos.connect(host="localhost",
+    conn = taos.connect(host="stephanie",
                         port=6030,
                         user="root",
                         password="taosdata")
@@ -138,6 +138,6 @@ def insert_data(earth_points: List[EarthCurvePointEntity], conn: taos.TaosConnec
 if __name__ == '__main__':
     conn = get_connection()
     create_stable(conn)
-    earth_points = prepare_data("mseed_data/SF202210160854A-B758-08/XJ.AHQ.00.20221016085459.mseed")
+    earth_points = prepare_data("../mseed_data/SF202210160854A-B758-08/XJ.AHQ.00.20221016085459.mseed")
     create_table(earth_points, conn)
     insert_data(earth_points, conn)

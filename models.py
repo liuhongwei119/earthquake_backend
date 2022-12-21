@@ -1,11 +1,10 @@
 from exts import db
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DECIMAL, Enum, Date, DateTime, Time, Text
-from sqlalchemy.dialects.mysql import LONGTEXT
-import json
 
 
-class EarthCurveModel(db.Model):
+class CurveEntity(db.Model):
+    # TODO 存储曲线相关联的信息
     __tablename__ = "earth_curve"
     id = Column(Integer, primary_key=True, autoincrement=True)
     network = Column(String(100), nullable=False)
@@ -19,11 +18,15 @@ class EarthCurveModel(db.Model):
     npts = Column(String(100), nullable=False)
     calib = Column(String(100), nullable=False)
     _format = Column(String(100), nullable=False)
-    curve_id = Column(String(100), nullable=False)  # "{network}.{station}.{location}.{channel}_{start_time}_{end_time}"
+    curve_id = Column(String(100), nullable=False)  # "{network}.{station}.{location}.{channel}"
     file_name = Column(String(100), nullable=False, default="default")
-    curve_data = Column(LONGTEXT, nullable=False)
-    join_time = Column(DateTime, default=datetime.now)  # func
-    # 震源经度，纬度 ，事件类型，事件震级，p波开始时间， 烈度
+    join_time = Column(DateTime, default=datetime.now)
+    longitude = Column(String(100))  # 震源经度
+    latitude = Column(String(100))  # 纬度
+    event_type = Column(String(100))  # 事件类型
+    magnitude = Column(String(100))  # 震级
+    p_start_time = Column(DateTime)  # p波开始时间
+    intensity = Column(String(100))  # 烈度
 
     def convert_to_json_res(self):
         curve_dict = self.__dict__.copy()
@@ -34,3 +37,16 @@ class EarthCurveModel(db.Model):
         curve_dict["end_time"] = curve_dict["end_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["join_time"] = curve_dict["join_time"].strftime("%Y-%m-%d %H:%M:%S")
         return curve_dict
+
+
+class PointEntity:
+    # TODO 存储曲线时许点相关信息
+    def __init__(self, network, station, location, channel, file_name, curve_id, point_data, join_time):
+        self.network = network
+        self.station = station
+        self.location = location
+        self.channel = channel
+        self.file_name = file_name
+        self.curve_id = curve_id
+        self.point_data = point_data
+        self.join_time = join_time

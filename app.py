@@ -2,7 +2,7 @@ from flask import Flask
 from exts import db
 from flask_migrate import Migrate
 import config
-from blueprints.offline_mysql_curve import bp as offline_mysql_curve_bp
+from blueprints.curve_blueprint import bp as curve_bp
 from gevent import pywsgi
 from flask_cors import CORS
 
@@ -15,7 +15,7 @@ app.config.from_object(config)
 db.init_app(app)
 migrate = Migrate(app, db)
 
-app.register_blueprint(offline_mysql_curve_bp)
+app.register_blueprint(curve_bp)
 
 
 @app.route('/')
