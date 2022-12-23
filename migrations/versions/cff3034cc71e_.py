@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: bae27bc1d172
+Revision ID: cff3034cc71e
 Revises: 
-Create Date: 2022-11-28 00:18:53.382479
+Create Date: 2022-12-21 17:05:17.387917
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'bae27bc1d172'
+revision = 'cff3034cc71e'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -31,8 +31,15 @@ def upgrade():
     sa.Column('npts', sa.String(length=100), nullable=False),
     sa.Column('calib', sa.String(length=100), nullable=False),
     sa.Column('_format', sa.String(length=100), nullable=False),
-    sa.Column('curve_data', sa.Text(), nullable=False),
+    sa.Column('curve_id', sa.String(length=100), nullable=False),
+    sa.Column('file_name', sa.String(length=100), nullable=False),
     sa.Column('join_time', sa.DateTime(), nullable=True),
+    sa.Column('longitude', sa.String(length=100), nullable=True),
+    sa.Column('latitude', sa.String(length=100), nullable=True),
+    sa.Column('event_type', sa.String(length=100), nullable=True),
+    sa.Column('magnitude', sa.String(length=100), nullable=True),
+    sa.Column('p_start_time', sa.DateTime(), nullable=True),
+    sa.Column('intensity', sa.String(length=100), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
