@@ -1,2 +1,2 @@
-migrations/:
-mseed_data/:
+migrations/
+mseed_data/
