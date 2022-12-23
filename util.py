@@ -1,5 +1,13 @@
 from datetime import datetime
 import os
+import pandas as pd
+
+
+def split_time_ranges(from_time, to_time, frequency):
+    from_time, to_time = pd.to_datetime(from_time), pd.to_datetime(to_time)
+    time_range = list(pd.date_range(from_time, to_time, periods=frequency))
+    return time_range
+
 
 
 def convert_utc_to_datetime(utc_date):
@@ -25,5 +33,9 @@ def get_all_file_in_path(path, all_files):
     return all_files
 
 
+def get_ts(ts: str):
+    dt = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f')
+    return int(dt.timestamp() * 1000)
+
 if __name__ == '__main__':
-    print(get_all_file_in_path("blueprints/mseed_data", []))
+    print(get_ts("2018-10-03 14:38:05.000"))
