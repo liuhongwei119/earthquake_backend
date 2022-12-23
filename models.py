@@ -1,5 +1,6 @@
 from exts import db
 from datetime import datetime
+import time
 from sqlalchemy import Column, Integer, String, Float, Boolean, DECIMAL, Enum, Date, DateTime, Time, Text
 
 
@@ -28,14 +29,17 @@ class CurveEntity(db.Model):
     p_start_time = Column(DateTime)  # p波开始时间
     intensity = Column(String(100))  # 烈度
 
-    def convert_to_json_res(self):
+    def convert_to_dict(self):
         curve_dict = self.__dict__.copy()
         print(curve_dict)
         del curve_dict["_sa_instance_state"]
-        curve_dict["curve_data"] = list(map(int, list(curve_dict["curve_data"].split(","))))
+        curve_dict["start_ts"] = int(time.mktime(curve_dict["start_time"].timetuple()))
+        curve_dict["end_ts"] = int(time.mktime(curve_dict["end_time"].timetuple()))
+        curve_dict["join_ts"] = int(time.mktime(curve_dict["join_time"].timetuple()))
         curve_dict["start_time"] = curve_dict["start_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["end_time"] = curve_dict["end_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["join_time"] = curve_dict["join_time"].strftime("%Y-%m-%d %H:%M:%S")
+
         return curve_dict
 
 
