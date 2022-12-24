@@ -20,7 +20,7 @@ token = "6CayNW5Hv3QK32-UvVPQCWrGSwpHiXCYTPb_oJtKNaJm7ZaqqW92ZcMpQ1yDmw40q6elq9q
 org = "东北大学"
 url = "http://stephanie:8086"
 sep = "/"
-earthquake_bucket = "earthquake_bucket"
+earthquake_bucket = "earthquake_bucket_linux"
 
 
 # TODO ================================dump data================================
