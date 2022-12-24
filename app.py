@@ -32,7 +32,7 @@ def cross_region(rst):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5100)
     # 通过CORS，所有的来源都允许跨域访问
     # CORS(app, resources=r'/*')
     # server = pywsgi.WSGIServer(('0.0.0.0', 1123), app)

@@ -1,5 +1,6 @@
-from sqlalchemy import or_, and_
+import time
 
+from sqlalchemy import or_, and_
 from models import CurveEntity, PointEntity
 from exts import db
 from datetime import datetime
@@ -12,28 +13,61 @@ from models import PointEntity
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
 from util import split_time_ranges
+import threading
 
 # You can generate an API token from the "API Tokens Tab" in the UI
 token = "6CayNW5Hv3QK32-UvVPQCWrGSwpHiXCYTPb_oJtKNaJm7ZaqqW92ZcMpQ1yDmw40q6elq9qncQpw5xpZMWhf6Q=="
 org = "东北大学"
-bucket = "earthquake_bucket"
 url = "http://stephanie:8086"
 sep = "/"
 earthquake_bucket = "earthquake_bucket"
 
 
 # TODO ================================dump data================================
+
+class WriteInfluxDbThread(threading.Thread):
+    def __init__(self, one_curve_datas, file_path):
+        threading.Thread.__init__(self)
+        self.file_path = file_path
+        self.raw_data = one_curve_datas
+        self.curve_id = one_curve_datas.id
+        self.curve_stats = one_curve_datas.stats
+        self.data_list = one_curve_datas.data
+
+    def run(self):
+        start_write_ts = int(time.time())
+        print(f"start write curve_id : {self.curve_id} into influxDB")
+        self.curve_stats.start_time = convert_utc_to_datetime(self.curve_stats.starttime)
+        self.curve_stats.end_time = convert_utc_to_datetime(self.curve_stats.endtime)
+        curve_points = []
+
+        ts_list = split_time_ranges(self.curve_stats.start_time, self.curve_stats.end_time, len(self.data_list))
+        for index in range(len(self.data_list)):
+            curve_point = PointEntity(network=self.curve_stats.network,
+                                      station=self.curve_stats.station,
+                                      location=self.curve_stats.location,
+                                      channel=self.curve_stats.channel,
+                                      curve_id=self.curve_id,
+                                      file_name=self.file_path.split(sep)[-1],
+                                      join_time=ts_list[index].to_pydatetime() + datetime.timedelta(days=67),
+                                      point_data=int(self.data_list[index])
+                                      )
+            curve_points.append(curve_point)
+        dump_point_data(curve_points)
+
+        end_write_ts = int(time.time())
+        print(f"end write curve_id : {self.curve_id} into influxDB cost time : {end_write_ts - start_write_ts}")
+
+
 def dump_one_curve(file_path):
     raw_datas = read(file_path)
+    # TODO dump curve info to mysql
     for raw_data in raw_datas:
         curve_data = raw_data.data
         curve_id = raw_data.id
         curve_stats = raw_data.stats
         curve_stats.start_time = convert_utc_to_datetime(curve_stats.starttime)
         curve_stats.end_time = convert_utc_to_datetime(curve_stats.endtime)
-        print(curve_id)
-
-        # TODO dump curve info to mysql
         earth_curve = CurveEntity(network=curve_stats.network,
                                   station=curve_stats.station,
                                   location=curve_stats.location,
@@ -49,26 +83,14 @@ def dump_one_curve(file_path):
                                   file_name=file_path.split(sep)[-1]
                                   )
         db.session.add(earth_curve)
-
-        # TODO dump curve points to influxDB
-        curve_points = []
-        data_list = raw_data.data
-        ts_list = split_time_ranges(curve_stats.start_time, curve_stats.end_time, len(data_list))
-        for index in range(len(data_list)):
-            curve_point = PointEntity(network=curve_stats.network,
-                                      station=curve_stats.station,
-                                      location=curve_stats.location,
-                                      channel=curve_stats.channel,
-                                      curve_id=curve_id,
-                                      file_name=file_path.split(sep)[-1],
-                                      join_time=ts_list[index].to_pydatetime() + datetime.timedelta(days=63),
-                                      point_data=int(data_list[index])
-                                      )
-            curve_points.append(curve_point)
-            print(file_path.split(os.path.sep))
-            print(curve_point.__dict__)
-        dump_point_data(curve_points)
     db.session.commit()
+
+    # TODO dump curve points to influxDB
+    write_influxDb_threads = []
+    for raw_data in raw_datas:
+        write_influxDb_threads.append(WriteInfluxDbThread(one_curve_datas=raw_data, file_path=file_path))
+    for thread in write_influxDb_threads:
+        thread.start()
 
 
 def dump_point_data(curve_points: List[PointEntity]):
@@ -82,7 +104,7 @@ def dump_point_data(curve_points: List[PointEntity]):
                 .tag("channel", curve_point.channel) \
                 .field("raw_data", curve_point.point_data) \
                 .time(curve_point.join_time, WritePrecision.NS)
-            write_api.write(bucket=bucket, org=org, record=point)
+            write_api.write(bucket=earthquake_bucket, org=org, record=point)
         write_api.flush()
         client.close()
 
@@ -153,6 +175,7 @@ def get_curves_with_or_condition(arg_dict):
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
+
 def get_curves_with_and_condition(arg_dict):
     """
     :param arg_dict: {
@@ -172,9 +195,9 @@ def get_curves_with_and_condition(arg_dict):
 
     check_params(arg_dict, ["channel", "location", "network", "station"])
     curve_infos = CurveEntity.query.filter(and_(CurveEntity.channel == arg_dict["channel"],
-                                               CurveEntity.location == arg_dict["location"],
-                                               CurveEntity.network == arg_dict["network"],
-                                               CurveEntity.station == arg_dict["station"])).all()
+                                                CurveEntity.location == arg_dict["location"],
+                                                CurveEntity.network == arg_dict["network"],
+                                                CurveEntity.station == arg_dict["station"])).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 

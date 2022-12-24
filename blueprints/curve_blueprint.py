@@ -140,7 +140,7 @@ def search_curves_with_points():
 
 @bp.route("/upload_test")
 def test_curve_upload():
-    dump_one_curve("mseed_data/SF202210160854A-B758-08/XJ.AKS.00.20221016085511.mseed")
+    dump_one_curve("XJ.AHQ.00.20221016085459.mseed")
     rst = jsonify({"status": 200})
     return rst
 
