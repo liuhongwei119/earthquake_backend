@@ -22,6 +22,14 @@ url = "http://stephanie:8086"
 sep = "/"
 earthquake_bucket = "earthquake_bucket"
 
+# TODO sqlalchemy 动态查询字段
+condition_fields = {
+    "network": CurveEntity.network,
+    "channel": CurveEntity.channel,
+    "location": CurveEntity.location,
+    "station": CurveEntity.station
+}
+
 
 # TODO ================================dump data================================
 
@@ -119,22 +127,7 @@ def format_curve_infos_res(curve_infos):
     return res
 
 
-def get_all_curves():
-    """
-    :return: {
-        "curve_id":{
-            “curve_info” ：{
-
-            }
-        }
-    }
-    """
-    curve_infos = CurveEntity.query.order_by(CurveEntity.file_name).all()
-    curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
-    return format_curve_infos_res(curve_infos)
-
-
-def get_curves(curve_ids):
+def get_curves(curve_ids=None):
     """ 根据curve_ids 查找curve
     :param curve_ids: list[curve_id]
     :return: {
@@ -145,7 +138,10 @@ def get_curves(curve_ids):
         }
     }
     """
-    curve_infos = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
+    if curve_ids is None or len(curve_ids) == 0:
+        curve_infos = CurveEntity.query.order_by(CurveEntity.file_name).all()
+    else:
+        curve_infos = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
@@ -153,10 +149,10 @@ def get_curves(curve_ids):
 def get_curves_with_or_condition(arg_dict):
     """
     :param arg_dict: {
-		"channel": "BHE",
-		"location": "00",
-		"network": "XJ",
-		"station": "AKS"
+    "channel": "BHE",
+    "location": "00",
+    "network": "XJ",
+    "station": "AKS"
     }
     :return: {
         "curve_id":{
@@ -166,12 +162,11 @@ def get_curves_with_or_condition(arg_dict):
         }
     }
     """
+    query_list = []
+    for field_name, field_value in arg_dict.items():
+        query_list.append(condition_fields[field_name] == field_value)
 
-    check_params(arg_dict, ["channel", "location", "network", "station"])
-    curve_infos = CurveEntity.query.filter(or_(CurveEntity.channel == arg_dict["channel"],
-                                               CurveEntity.location == arg_dict["location"],
-                                               CurveEntity.network == arg_dict["network"],
-                                               CurveEntity.station == arg_dict["station"])).all()
+    curve_infos = CurveEntity.query.filter(or_(*query_list)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
@@ -179,10 +174,10 @@ def get_curves_with_or_condition(arg_dict):
 def get_curves_with_and_condition(arg_dict):
     """
     :param arg_dict: {
-		"channel": "BHE",
-		"location": "00",
-		"network": "XJ",
-		"station": "AKS"
+    "channel": "BHE",
+    "location": "00",
+    "network": "XJ",
+    "station": "AKS"
     }
     :return: {
         "curve_id":{
@@ -192,12 +187,10 @@ def get_curves_with_and_condition(arg_dict):
         }
     }
     """
-
-    check_params(arg_dict, ["channel", "location", "network", "station"])
-    curve_infos = CurveEntity.query.filter(and_(CurveEntity.channel == arg_dict["channel"],
-                                                CurveEntity.location == arg_dict["location"],
-                                                CurveEntity.network == arg_dict["network"],
-                                                CurveEntity.station == arg_dict["station"])).all()
+    query_list = []
+    for field_name, field_value in arg_dict.items():
+        query_list.append(condition_fields[field_name] == field_value)
+    curve_infos = CurveEntity.query.filter(and_(*query_list)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
@@ -279,7 +272,7 @@ def get_curve_points(arg_dict):
     query = query + f"""
         |> filter(fn: (r) => {measurement_condition})
     """
-    # todo fiels
+    # todo fields
     query = query + f"""
         |> filter(fn: (r) => r["_field"] == "{arg_dict["field"]}")
     """

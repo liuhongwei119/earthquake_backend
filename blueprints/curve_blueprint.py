@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from util import convert_utc_to_datetime, get_all_file_in_path
-from dao import dump_one_curve, get_all_curves, get_curve_points, get_curves, get_curves_with_or_condition, \
+from dao import dump_one_curve, get_curve_points, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params
 from flask import request
 from exts import db
@@ -33,37 +33,43 @@ def curve_upload():
 
 
 # TODO ======================only curve info=========================
-@bp.route("/get_all_curves")
-def search_all_curves():
-    return jsonify({"res": get_all_curves()})
-
-
 @bp.route("/get_curves", methods=['POST'])
 def search_curves():
-    curve_ids_str = request.form.get("curve_ids")
+    curve_ids_str = request.form.get("curve_ids", "[]")
     curve_ids = json.loads(curve_ids_str)
     return jsonify({"res": get_curves(curve_ids)})
 
 
-@bp.route("/get_curves_with_or_condition", methods=['POST'])
-def search_curves_with_or_condition():
-    args_str = request.form.get("args")
+@bp.route("/get_curves_with_condition", methods=['POST'])
+def search_curves_with_condition():
+    """
+    :param
+    args: {
+        "conditions" :{
+            "channel": "BHE",
+            "location": "00",
+            "network": "XJ",
+            "station": "AKS"
+        },
+        "conjunction" : "or" / "and"
+    }
+    :return:  curves
+    """
+    args_str = request.form.get("args", "")
     args = json.loads(args_str)
-    check_params(args, ["channel", "location", "network", "station"])
-    return jsonify({"res": get_curves_with_or_condition(args)})
-
-
-@bp.route("/get_curves_with_and_condition", methods=['POST'])
-def search_curves_with_and_condition():
-    condition_str = request.form.get("condition")
-    condition = json.loads(condition_str)
-    check_params(condition, ["channel", "location", "network", "station"])
-    return jsonify({"res": get_curves_with_and_condition(condition)})
+    print(args)
+    if (not args.__contains__("conditions") or len(args["conditions"]) == 0) \
+            or (not args.__contains__("conjunction") or args["conjunction"] not in ["or", "and"]):
+        print("no")
+    else:
+        if args["conjunction"] == "or":
+            return jsonify({"res": get_curves_with_or_condition(args["conditions"])})
+        elif args["conjunction"] == "and":
+            return jsonify({"res": get_curves_with_and_condition(args["conditions"])})
 
 
 # TODO ======================curve info and points=========================
-def build_influx_query_arg(curve_ids, start_ts, end_ts, filters, windows):
-
+def build_influx_query_arg(curve_ids, start_ts, end_ts, filters, window):
     query_args = {
         "measurement": curve_ids,
         "field": "raw_data",
@@ -72,7 +78,7 @@ def build_influx_query_arg(curve_ids, start_ts, end_ts, filters, windows):
             "start_ts": start_ts,
             "end_ts": end_ts
         },
-        "window": windows
+        "window": window
     }
     return query_args
 
@@ -96,8 +102,8 @@ def query_influx(query_args, curve_ids, curve_infos):
     return curve_infos
 
 
-@bp.route("/get_curves_with_points", methods=['POST'])
-def search_curves_with_points():
+@bp.route("/get_curves_and_points", methods=['POST'])
+def search_curves_and_points():
     """
     args =
     {
@@ -106,19 +112,16 @@ def search_curves_with_points():
         "filters": {
             "channel": "BHE"
         },
-        "windows": {"window_len": "5s", "fn": "mean"}
+        "window": {"window_len": "5s", "fn": "mean"}
     }
     :return:
     """
-    args_str = request.form.get("args")
+    args_str = request.form.get("args", "")
     args = json.loads(args_str)
 
     # TODO 1. parse args and get curve
     # if curve_id is None , then search all curve
-    if args.__contains__("curve_ids") and len(args["curve_ids"]) > 0:
-        curve_infos = get_curves(args["curve_ids"])
-    else:
-        curve_infos = get_all_curves()
+    curve_infos = get_curves(args.get("curve_ids", []))
     curve_ids = curve_infos.keys()
 
     # TODO 2. get min start_ts from
@@ -130,9 +133,9 @@ def search_curves_with_points():
     # TODO 3. gen args
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
     filters = args["filters"] if args.__contains__("filters") else {}
-    windows = args["windows"] if args.__contains__("windows") else {}
+    window = args["window"] if args.__contains__("window") else {"window_len": "5s", "fn": "mean"}
     query_args = build_influx_query_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
-                                        windows=windows)
+                                        window=window)
     res = query_influx(query_args, curve_ids, curve_infos)
 
     return jsonify({"res": res, "status": 200})
@@ -143,7 +146,6 @@ def test_curve_upload():
     dump_one_curve("XJ.AHQ.00.20221016085459.mseed")
     rst = jsonify({"status": 200})
     return rst
-
 
 
 if __name__ == '__main__':
