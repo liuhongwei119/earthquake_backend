@@ -31,7 +31,6 @@ class CurveEntity(db.Model):
 
     def convert_to_dict(self):
         curve_dict = self.__dict__.copy()
-        print(curve_dict)
         del curve_dict["_sa_instance_state"]
         curve_dict["start_ts"] = int(time.mktime(curve_dict["start_time"].timetuple()))
         curve_dict["end_ts"] = int(time.mktime(curve_dict["end_time"].timetuple()))

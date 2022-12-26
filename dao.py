@@ -283,10 +283,10 @@ def get_curve_points(arg_dict):
     """
 
     # todo window
-    if arg_dict.__contains__("window") and arg_dict["window"].__contains__("window_len"):
+    if arg_dict.__contains__("window") and arg_dict["window"].__contains__("window_len") :
         window = arg_dict["window"]
         query = query + f"""
-            |> aggregateWindow(every: {window["window_len"]}, fn: {window["fn"]}, createEmpty: false)
+            |> aggregateWindow(every: {window["window_len"]}, fn: {window.get("fn","mean")}, createEmpty: false)
         """
 
     # todo yield

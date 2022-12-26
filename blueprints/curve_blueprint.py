@@ -33,14 +33,25 @@ def curve_upload():
 
 
 # TODO ======================only curve info=========================
-@bp.route("/get_curves", methods=['POST'])
+
+def delete_none_value_in_dict(transmit_dict):
+    result_dict = {}
+    for key, value in transmit_dict.items():
+        print(f"key {key} value {value}")
+        if len(value) != 0:
+            result_dict[key] = value
+
+    return result_dict
+
+
+@bp.route("/get_curves", methods=['GET', 'POST'])
 def search_curves():
     curve_ids_str = request.form.get("curve_ids", "[]")
     curve_ids = json.loads(curve_ids_str)
     return jsonify({"res": get_curves(curve_ids)})
 
 
-@bp.route("/get_curves_with_condition", methods=['POST'])
+@bp.route("/get_curves_with_condition", methods=['GET', 'POST'])
 def search_curves_with_condition():
     """
     :param
@@ -55,13 +66,14 @@ def search_curves_with_condition():
     }
     :return:  curves
     """
-    args_str = request.form.get("args", "")
+    args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
     print(args)
     if (not args.__contains__("conditions") or len(args["conditions"]) == 0) \
             or (not args.__contains__("conjunction") or args["conjunction"] not in ["or", "and"]):
-        print("no")
+        return jsonify({"res": get_curves()})
     else:
+        args["conditions"] = delete_none_value_in_dict(args["conditions"])
         if args["conjunction"] == "or":
             return jsonify({"res": get_curves_with_or_condition(args["conditions"])})
         elif args["conjunction"] == "and":
@@ -102,7 +114,7 @@ def query_influx(query_args, curve_ids, curve_infos):
     return curve_infos
 
 
-@bp.route("/get_curves_and_points", methods=['POST'])
+@bp.route("/get_curves_and_points", methods=['GET', 'POST'])
 def search_curves_and_points():
     """
     args =
@@ -116,8 +128,9 @@ def search_curves_and_points():
     }
     :return:
     """
-    args_str = request.form.get("args", "")
+    args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
+    print(args)
 
     # TODO 1. parse args and get curve
     # if curve_id is None , then search all curve
@@ -133,7 +146,9 @@ def search_curves_and_points():
     # TODO 3. gen args
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
     filters = args["filters"] if args.__contains__("filters") else {}
-    window = args["window"] if args.__contains__("window") else {"window_len": "5s", "fn": "mean"}
+    window = args["window"] if args.__contains__("window") else {}
+    filters = delete_none_value_in_dict(filters)
+    window = delete_none_value_in_dict(window)
     query_args = build_influx_query_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
                                         window=window)
     res = query_influx(query_args, curve_ids, curve_infos)
