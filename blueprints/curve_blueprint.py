@@ -17,6 +17,7 @@ file_prefix = "offline_earthquake_files"
 def curve_upload():
     upload_file = request.files.get("file")
     offline_earthquake_files_path = os.path.join(os.getcwd(), file_prefix)
+    print(offline_earthquake_files_path)
     if not os.path.exists(offline_earthquake_files_path):
         os.mkdir(offline_earthquake_files_path)
     if upload_file is not None:
@@ -79,7 +80,6 @@ def search_curves_with_condition():
         elif args["conjunction"] == "and":
             return jsonify({"res": get_curves_with_and_condition(args["conditions"])})
 
-
 # TODO ======================curve info and points=========================
 def build_influx_query_arg(curve_ids, start_ts, end_ts, filters, window):
     query_args = {
@@ -111,6 +111,13 @@ def query_influx(query_args, curve_ids, curve_infos):
         curve_infos[curve_id]["points_info"] = {}
         curve_infos[curve_id]["points_info"]["raw_datas"] = raw_datas
         curve_infos[curve_id]["points_info"]["ts"] = ts_list
+
+    # 若曲线信息点信息为空，不返回曲线信息:
+    for curve_id in list(curve_ids):
+        raw_datas = curve_infos[curve_id]["points_info"]["raw_datas"]
+        if len(raw_datas) == 0:
+            del curve_infos[curve_id]
+
     return curve_infos
 
 

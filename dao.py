@@ -299,7 +299,7 @@ def get_curve_points(arg_dict):
     measurement_res = {}
     for measurement in arg_dict["measurement"]:
         measurement_res[measurement] = []
-    with InfluxDBClient(url=url, token=token, org=org) as client:
+    with InfluxDBClient(url=url, token=token, org=org, timeout=60_000) as client:
         tables = client.query_api().query(query, org=org)
         for table in tables:
             for record in table.records:
