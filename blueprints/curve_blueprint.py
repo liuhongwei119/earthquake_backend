@@ -1,11 +1,17 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, make_response
+
 from util import convert_utc_to_datetime, get_all_file_in_path
-from dao import dump_one_curve, get_curve_points, get_curves, get_curves_with_or_condition, \
-    get_curves_with_and_condition, check_params
+from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
+    get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
+    get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
+    transformation_points, time_and_frequency_feature_extraction
 from flask import request
 from exts import db
 import time
 import json
+from flask import current_app
+import gzip
+from flask import send_file
 
 import os
 
@@ -49,7 +55,8 @@ def delete_none_value_in_dict(transmit_dict):
 def search_curves():
     curve_ids_str = request.form.get("curve_ids", "[]")
     curve_ids = json.loads(curve_ids_str)
-    return jsonify({"res": get_curves(curve_ids)})
+    res = {"res": get_curves(curve_ids)}
+    return gzip_compress_response(res)
 
 
 @bp.route("/get_curves_with_condition", methods=['GET', 'POST'])
@@ -70,47 +77,62 @@ def search_curves_with_condition():
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
     print(args)
+    query_start_time = time.time()
+    res = {}
     if (not args.__contains__("conditions") or len(args["conditions"]) == 0) \
             or (not args.__contains__("conjunction") or args["conjunction"] not in ["or", "and"]):
-        return jsonify({"res": get_curves()})
+        curve_infos = get_curves()
+        query_end_time = time.time()
+        res = {"res": curve_infos, "cost_time": query_end_time - query_start_time}
     else:
         args["conditions"] = delete_none_value_in_dict(args["conditions"])
         if args["conjunction"] == "or":
-            return jsonify({"res": get_curves_with_or_condition(args["conditions"])})
+            res = jsonify({"res": get_curves_with_or_condition(args["conditions"])})
         elif args["conjunction"] == "and":
-            return jsonify({"res": get_curves_with_and_condition(args["conditions"])})
+            res = jsonify({"res": get_curves_with_and_condition(args["conditions"])})
+    return gzip_compress_response(res)
+
 
 # TODO ======================curve info and points=========================
-def build_influx_query_arg(curve_ids, start_ts, end_ts, filters, window):
+def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
+    """
+    此方法用作构造 通过tdengine的查询raw_data（原始数据）
+    :param curve_ids:
+    :param start_ts:
+    :param end_ts:
+    :param filters:
+    :param window:
+    :param fields:
+    :return:
+    """
     query_args = {
         "measurement": curve_ids,
-        "field": "raw_data",
+        "field": ["raw_data"],
         "filter": filters,
         "time_range": {
-            "start_ts": start_ts,
+            "start_ts": start_ts,  # ms为单位
             "end_ts": end_ts
         },
-        "window": window
+        "window": window,
+        "fields": fields
     }
     return query_args
 
 
-def query_influx(query_args, curve_ids, curve_infos):
-    # TODO query influxDB
-    curve_points_dict = get_curve_points(query_args)
-    # TODO round curve_ids
+def encapsulation_curve_points_res(curve_points_dict, curve_ids, curve_infos):
+    """
+    封装获取raw_datas的查询结果
+    :param curve_points_dict: 点查询结果
+    :param curve_ids: 曲线id
+    :param curve_infos: 曲线查询结果
+    :return:  曲线和点结合返回结果
+    """
+
     for curve_id in curve_ids:
-        raw_datas = []
-        ts_list = []
         curve_points = curve_points_dict[curve_id]
-        for curve_point in curve_points:
-            ts = int(time.mktime(curve_point.values["_time"].timetuple()))
-            value = curve_point.values["_value"]
-            ts_list.append(ts)
-            raw_datas.append(value)
         curve_infos[curve_id]["points_info"] = {}
-        curve_infos[curve_id]["points_info"]["raw_datas"] = raw_datas
-        curve_infos[curve_id]["points_info"]["ts"] = ts_list
+        curve_infos[curve_id]["points_info"]["raw_datas"] = curve_points["raw_data_list"]
+        curve_infos[curve_id]["points_info"]["ts"] = curve_points["ts_list"]
 
     # 若曲线信息点信息为空，不返回曲线信息:
     for curve_id in list(curve_ids):
@@ -118,49 +140,171 @@ def query_influx(query_args, curve_ids, curve_infos):
         if len(raw_datas) == 0:
             del curve_infos[curve_id]
 
-    return curve_infos
-
 
 @bp.route("/get_curves_and_points", methods=['GET', 'POST'])
 def search_curves_and_points():
     """
+    参数：
     args =
     {
         "curve_ids": ["XJ.AKS.00.BHE", "XJ.AKS.00.BHN", "XJ.AKS.00.BHZ"],
+        "start_ts": 1675329068
         "end_ts": 1671793259,
         "filters": {
             "channel": "BHE"
         },
-        "window": {"window_len": "5s", "fn": "mean"}
+        "window": {"window_len": "5s", "fn": "mean"},
+        "fields":["raw_data"]
     }
+    查询步骤：
+    1.解析参数
+    2.通过mysql查询获取curve曲线信息（曲线信息存储在mysql，曲线点信息存储在tdengine）
+    3.设置相关参数及其默认值
+    4.根据参数构造查询格式
+    5.查询tdengine获取原始数据信息
+    6.将曲线数据和原始数据结合
     :return:
     """
+    # step one
+    query_start_time = time.time()
+    args_str = request.form.get("args", "{}")
+    args = json.loads(args_str)
+
+    # step two
+    curve_infos = get_curves(args.get("curve_ids", []))
+    curve_ids = curve_infos.keys()
+
+    # step three
+    start_ts = 0
+    if args.__contains__("start_ts") and args['start_ts'] != "":
+        start_ts = args['start_ts']
+    else:
+        stat_ts_list = []
+        for curve_id in curve_ids:
+            stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
+        start_ts = min(stat_ts_list)
+    end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
+    filters = args["filters"] if args.__contains__("filters") else {}
+    window = args["window"] if args.__contains__("window") else {}
+    fields = args["fields"] if args.__contains__("fields") else ["raw_data"]
+    filters = delete_none_value_in_dict(filters)
+    window = delete_none_value_in_dict(window)
+    # tdengine 查询需要用us
+    start_ts = start_ts * 1000
+    end_ts = end_ts * 1000
+
+    # step four
+    query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
+                                      window=window, fields=fields)
+    # step five
+    curve_points_dict = get_curve_points_by_tdengine(arg_dict=query_args)
+    # step six
+    encapsulation_curve_points_res(curve_points_dict=curve_points_dict, curve_infos=curve_infos,
+                                   curve_ids=curve_ids)
+    query_end_time = time.time()
+
+    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
+    return gzip_compress_response(res)
+
+
+@bp.route("/get_points_and_transform", methods=['GET', 'POST'])
+def search_points_and_transform():
+    """
+    args =
+    {
+        "curve_ids": ["XJ.AKS.00.BHE", "XJ.AKS.00.BHN", "XJ.AKS.00.BHZ"],
+        ”pretreatment_args“：{
+            "downsample": 10, 指定降采样比例，默认不采样
+            ”divide_sensitivity“： 1 ，指定仪器灵敏度，默认1
+            "normalization"："zero_center" | "zs_score" | "rescale_zero_one"| "none"  默认”none“
+        }
+    }
+    查询步骤：
+    1.解析参数
+    2.通过mysql查询获取curve曲线信息（曲线信息存储在mysql，曲线点信息存储在tdengine）
+    3.设置相关参数及其默认值
+    4.根据参数构造查询格式
+    5.查询tdengine获取原始数据信息
+    6.将曲线数据和原始数据结合
+    7.预处理曲线数据
+    8.添加转化成频域时域数据
+    9.特征提取
+    :return:
+    """
+    # step one
+    query_start_time = time.time()
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
     print(args)
 
-    # TODO 1. parse args and get curve
-    # if curve_id is None , then search all curve
+    # step two
     curve_infos = get_curves(args.get("curve_ids", []))
     curve_ids = curve_infos.keys()
 
-    # TODO 2. get min start_ts from
-    stat_ts_list = []
-    for curve_id in curve_ids:
-        stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
-    start_ts = min(stat_ts_list)
-
-    # TODO 3. gen args
+    # step three
+    start_ts = 0
+    if args.__contains__("start_ts") and args['start_ts'] != "":
+        start_ts = args['start_ts']
+    else:
+        stat_ts_list = []
+        for curve_id in curve_ids:
+            stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
+        start_ts = min(stat_ts_list)
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
-    filters = args["filters"] if args.__contains__("filters") else {}
-    window = args["window"] if args.__contains__("window") else {}
-    filters = delete_none_value_in_dict(filters)
-    window = delete_none_value_in_dict(window)
-    query_args = build_influx_query_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
-                                        window=window)
-    res = query_influx(query_args, curve_ids, curve_infos)
+    # tdengine 查询需要用us
+    start_ts = start_ts * 1000
+    end_ts = end_ts * 1000
 
-    return jsonify({"res": res, "status": 200})
+    # step four
+    tdengine_query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters={},
+                                               window={}, fields=["raw_data"])
+    # step five
+    curve_points_dict = get_curve_points_by_tdengine(arg_dict=tdengine_query_args)
+
+    # step six
+    encapsulation_curve_points_res(curve_points_dict=curve_points_dict, curve_infos=curve_infos,
+                                   curve_ids=curve_ids)
+
+    # step seven
+    pretreatment_args = args["pretreatment_args"] if args.__contains__("pretreatment_args") else {}
+    build_pretreatment_args(pretreatment_args)
+    pretreatment_points(curve_infos, pretreatment_args)
+
+    # step eight
+    transformation_points(curve_infos)
+
+    # step nine
+    time_and_frequency_feature_extraction(curve_infos)
+
+    query_end_time = time.time()
+    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
+    return gzip_compress_response(res)
+
+
+@bp.route("/get_curves_in_same_file", methods=['GET', 'POST'])
+def search_curves_in_same_file():
+    """
+      one file has three curves, get all curve_ids in the same file by a curve_id
+    """
+
+    query_start_time = time.time()
+    args_str = request.form.get("args", "{}")
+    args = json.loads(args_str)
+    print(args)
+    if not args.__contains__("curve_id"):
+        raise ValueError("无curve_id")
+
+    curve_id = args["curve_id"]
+    file_name = get_file_name_by_curve_id(curve_id)
+    curve_ids = get_curve_ids_by_file_name(file_name)
+    query_end_time = time.time()
+    return jsonify(
+        {
+            "cost_time": query_end_time - query_start_time,
+            "status": "200",
+            "curve_ids": curve_ids
+        }
+    )
 
 
 @bp.route("/upload_test")
@@ -168,6 +312,17 @@ def test_curve_upload():
     dump_one_curve("XJ.AHQ.00.20221016085459.mseed")
     rst = jsonify({"status": 200})
     return rst
+
+
+@bp.route("/test_png")
+def test_png():
+    image_data = open(
+        r"D:\python_projects\earthquake_backend\time_domain_pngs\XJ.AHQ.00.BHE_XJ.AHQ.00.BHN_XJ.AHQ.00.BHZ.jpg",
+        "rb").read()
+    rst = jsonify({"status": 200})
+    response = make_response(image_data)
+    response.headers['Content-Type'] = 'image/png'  # 返回的内容类型必须修改
+    return response
 
 
 if __name__ == '__main__':

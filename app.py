@@ -5,6 +5,13 @@ import config
 from blueprints.curve_blueprint import bp as curve_bp
 from gevent import pywsgi
 from flask_cors import CORS
+# 设置日志的记录等级
+from flask import Flask, request
+import logging
+
+app = Flask(__name__)
+# 设置日志输出到文件中,而不是显示到网页
+app.config['PROPAGATE_EXCEPTIONS'] = False
 
 app = Flask(__name__)
 # 绑定配置文件
@@ -16,6 +23,24 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 app.register_blueprint(curve_bp)
+app.config['COMPRESS_REGISTER'] = False
+
+
+def setup_log():
+    # 1.创建flask.app日志器
+    flask_app_logger = logging.getLogger('flask.app')  # 使用文件名
+    # 设置日志级别
+    flask_app_logger.setLevel('DEBUG')
+
+    # 2.设置日志处理器,控制台输出
+    console_log_handler = logging.StreamHandler()
+
+    # 3.设置日志格式
+    console_log_formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y%b%d-%H:%M:%S")
+    console_log_handler.setFormatter(console_log_formatter)
+
+    # 4.添加日志
+    flask_app_logger.addHandler(console_log_handler)
 
 
 @app.route('/')
@@ -32,8 +57,9 @@ def cross_region(rst):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5100)
+    # setup_log()
+    app.run(host='0.0.0.0', debug=True, port=5100)
     # 通过CORS，所有的来源都允许跨域访问
     # CORS(app, resources=r'/*')
-    # server = pywsgi.WSGIServer(('0.0.0.0', 1123), app)
+    # server = pywsgi.WSGIServer(('0.0.0.0', 5100), app)
     # server.serve_forever()
