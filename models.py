@@ -31,7 +31,6 @@ class CurveEntity(db.Model):
 
     def convert_to_dict(self):
         curve_dict = self.__dict__.copy()
-        print(curve_dict)
         del curve_dict["_sa_instance_state"]
         curve_dict["start_ts"] = int(time.mktime(curve_dict["start_time"].timetuple()))
         curve_dict["end_ts"] = int(time.mktime(curve_dict["end_time"].timetuple()))
@@ -39,14 +38,21 @@ class CurveEntity(db.Model):
         curve_dict["start_time"] = curve_dict["start_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["end_time"] = curve_dict["end_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["join_time"] = curve_dict["join_time"].strftime("%Y-%m-%d %H:%M:%S")
-
+        curve_dict["p_start_time"] = curve_dict["p_start_time"].strftime("%Y-%m-%d %H:%M:%S")
         return curve_dict
 
 
 class PointEntity:
+    # measurement,tag_set field_set timestamp
+    taos_measurement = "earthquake,"
+    taos_tag_set = "network={},station={},location={},channel={},file_name={},curve_id={} "
+    taos_field_set = "raw_data={}"
+    taos_ts = "{}"
+
     # TODO 存储曲线时许点相关信息
-    def __init__(self, network, station, location, channel, file_name, curve_id, point_data, join_time):
-        self.network = network
+    def __init__(self, network, station, location, channel, file_name, curve_id, point_data, join_time, point_fre,
+                 point_amp):
+        self.network = network,
         self.station = station
         self.location = location
         self.channel = channel
@@ -54,3 +60,14 @@ class PointEntity:
         self.curve_id = curve_id
         self.point_data = point_data
         self.join_time = join_time
+
+    # TODO 转化为influxDD行协议，写入TDengine使用
+    def covert_to_influx_row(self):
+        # 写入时以us单位写入Tdengine
+        us = str(self.join_time.timestamp()).split(".")[0] + str(self.join_time.timestamp()).split(".")[1].ljust(6, "0")
+        influx_row_str = PointEntity.taos_measurement + \
+                         PointEntity.taos_tag_set.format(self.network[0], self.station, self.location,
+                                                         self.channel, self.file_name, self.curve_id) + \
+                         PointEntity.taos_field_set.format(self.point_data) + \
+                         PointEntity.taos_ts.format(us)
+        return influx_row_str
