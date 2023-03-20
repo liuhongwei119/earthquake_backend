@@ -1,21 +1,7 @@
-from flask import Blueprint, jsonify
-from util import convert_utc_to_datetime, get_all_file_in_path
 from dao import dump_one_curve
-from flask import request
-from exts import db
-from models import CurveEntity, PointEntity
-from exts import db
-from datetime import datetime
-from obspy import read
-from util import convert_utc_to_datetime, get_all_file_in_path
-import os
-import datetime
-from typing import List
-from models import PointEntity
 from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
-from util import split_time_ranges
 import time
+import taos
 
 # You can generate an API token from the "API Tokens Tab" in the UI
 token = "6CayNW5Hv3QK32-UvVPQCWrGSwpHiXCYTPb_oJtKNaJm7ZaqqW92ZcMpQ1yDmw40q6elq9qncQpw5xpZMWhf6Q=="
@@ -25,6 +11,16 @@ url = "http://stephanie:8086"
 sep = "/"
 earthquake_bucket = "earthquake_bucket"
 import os
+import threading
+
+
+class QueryInfluxDbThread(threading.Thread):
+    def __init__(self, query_args):
+        threading.Thread.__init__(self)
+        self.query_args = query_args
+
+    def run(self):
+        return get_curve_points(arg_dict=self.query_args)
 
 
 def curve_upload(path):
@@ -43,7 +39,7 @@ def check_params(arg_dict, need_fields):
             raise ValueError(f"{field} not in conf dict : {arg_dict}, please check!!!")
 
 
-def query_points(arg_dict):
+def get_curve_points(arg_dict):
     """
      use args make flux to query
 
@@ -74,10 +70,9 @@ def query_points(arg_dict):
     }
     """
     try:
+        print(arg_dict)
         check_params(arg_dict, ["measurement", "time_range", "field"])
         check_params(arg_dict["time_range"], ["start_ts"])
-        if arg_dict.get("window") is not None:
-            check_params(arg_dict["window"], ["window_len", "fn"])
     except ValueError as e:
         print("查询influx参数有问题", e)
         return
@@ -108,7 +103,7 @@ def query_points(arg_dict):
     query = query + f"""
         |> filter(fn: (r) => {measurement_condition})
     """
-    # todo fiels
+    # todo fields
     query = query + f"""
         |> filter(fn: (r) => r["_field"] == "{arg_dict["field"]}")
     """
@@ -119,15 +114,20 @@ def query_points(arg_dict):
     """
 
     # todo window
-    window = arg_dict["window"]
-    query = query + f"""
-        |> aggregateWindow(every: {window["window_len"]}, fn: {window["fn"]}, createEmpty: false)
-    """
+    if arg_dict.__contains__("window") and arg_dict["window"].__contains__("window_len"):
+        window = arg_dict["window"]
+        query = query + f"""
+            |> aggregateWindow(every: {window["window_len"]}, fn: {window.get("fn", "mean")}, createEmpty: false)
+        """
 
+    # todo drop columns
+    query = query + """
+        |> drop(columns: ["channel","location","network","station","_start","_stop"])
+        """
     # todo yield
-    query = query + f"""
-        |> yield(name: "{arg_dict["measurement"]}")
-    """
+    # query = query + f"""
+    #     |> yield(name: "{arg_dict["measurement"]}")
+    # """
 
     print(query)
 
@@ -140,25 +140,82 @@ def query_points(arg_dict):
             for record in table.records:
                 measurement_res[record.values["_measurement"]].append(record)
 
+    for measurement in list(measurement_res.keys()):
+        if len(measurement_res[measurement]) == 0:
+            del measurement_res[measurement]
     return measurement_res
 
 
-if __name__ == '__main__':
-    query_args = {
+def test_multi_influx_query():
+    begin = time.time()
+    measurements = [["XJ.AHQ.00.BHE", "XJ.AHQ.00.BHN", "XJ.AHQ.00.BHZ"],
+                    ["XJ.ALS.00.BHE", "XJ.ALS.00.BHN", "XJ.ALS.00.BHZ"],
+                    ["XJ.ATS.00.BHE", "XJ.ATS.00.BHN", "XJ.ATS.00.BHZ"]
+                    ]
+    query_args_template = {
         "measurement": [
-            "XJ.AKS.00.BHE", "XJ.AKS.00.BHN", "XJ.AKS.00.BHZ"
         ],
+        "filter": {
+        },
         "field": "raw_data",
         "time_range": {
             "start_ts": 1671267260
         },
-        "filter": {
-
-        },
         "window": {
-            "window_len": "30s",
-            "fn": "max"
         }
     }
-    res = query_points(query_args)
-    print(res)
+    query_args_list = []
+    for measurement in measurements:
+        query_args_template["measurement"] = measurement
+        print(query_args_template)
+        query_args_list.append(query_args_template.copy())
+
+    query_threads = []
+    for query_arg in query_args_list:
+        query_threads.append(QueryInfluxDbThread(query_args=query_arg))
+
+    query_results = []
+    for query_thread in query_threads:
+        query_results.append(query_thread.start())
+
+    for query_thread in query_threads:
+        query_thread.join()
+
+    end = time.time()
+    print(end - begin)
+
+
+def test_influx_query():
+    query_args = {
+        "measurement": [
+            "XJ.AHQ.00.BHE", "XJ.AHQ.00.BHN", "XJ.AHQ.00.BHZ", "XJ.ALS.00.BHE", "XJ.ALS.00.BHN", "XJ.ALS.00.BHZ"
+        ],
+        "filter": {
+        },
+        "field": "raw_data",
+        "time_range": {
+            "start_ts": 1671267260
+        },
+        "window": {
+        }
+    }
+    begin = time.time()
+    res = get_curve_points(query_args)
+    end = time.time()
+    print(end - begin)
+
+
+def test_save_to_tDengine():
+    conn: taos.TaosConnection = taos.connect(host="stephanie", user="root", password="taosdata", database="test",
+                                             port=6030)
+
+    server_version = conn.server_info
+    print("server_version", server_version)
+    client_version = conn.client_info
+    print("client_version", client_version)  # 3.0.0.0
+
+    conn.close()
+
+
+if __name__ == '__main__':
+    test_save_to_tDengine()

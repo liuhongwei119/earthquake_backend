@@ -1,2 +1,4 @@
 migrations/
 mseed_data/
+lhw/
+__pycache__/
