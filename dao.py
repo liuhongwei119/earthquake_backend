@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from flask import make_response
 from sqlalchemy import or_, and_
+import os
 
 from curvilinear_transformation.curve_change import get_frequency_by_my_fft
 from curvilinear_transformation.feature_extraction_util import TimeDomainFeatureExtraction, \
@@ -37,6 +38,8 @@ org = "东北大学"
 url = "http://stephanie:8086"
 sep = "/"
 earthquake_bucket = "earthquake_bucket"
+# 时频图存放路径文件夹
+time_frequency_pngs_dir_path = os.path.realpath("time_frequency_pngs")
 
 # TODO sqlalchemy 动态查询字段
 condition_fields = {
@@ -107,6 +110,13 @@ class WriteTDengineThread(threading.Thread):
         curve_points = []
 
         ts_list = split_time_ranges(self.curve_stats.start_time, self.curve_stats.end_time, len(self.data_list))
+        # test time
+        # print(type(ts_list[0].to_pydatetime()))
+        # with open("ts_list.txt", "w") as f:
+        #     for ts in ts_list:
+        #         a = str(ts.to_pydatetime().timestamp())
+        #         f.write(str(a.split(".")[0] + str(str(a.split(".")[1].ljust(6,"0")))))
+        #         f.write("\n")
         for index in range(len(self.data_list)):
             curve_point = PointEntity(network=self.curve_stats.network,
                                       station=self.curve_stats.station,
@@ -155,7 +165,8 @@ def dump_one_curve(file_path):
                                   _format=curve_stats._format,
                                   curve_id=curve_id,
                                   file_name=file_path.split(sep)[-1],
-                                  p_start_time=convert_utc_to_datetime(p_wave_starttime)
+                                  p_start_time=convert_utc_to_datetime(p_wave_starttime),
+                                  s_start_time=convert_utc_to_datetime(s_wave_starttime)
                                   )
         db.session.add(earth_curve)
     db.session.commit()
@@ -301,6 +312,10 @@ def get_curve_ids_by_file_name(file_name):
     curve_ids = CurveEntity.query.with_entities(CurveEntity.curve_id).filter(CurveEntity.file_name == file_name).all()
     return list(map(lambda x: x[0], curve_ids))
 
+
+def chang_curve_p_s_start_time(curve_id, p_start_date, s_start_date):
+    CurveEntity.query.filter_by(curve_id=curve_id).update({'p_start_time': p_start_date, "s_start_time": s_start_date})
+    db.session.commit()
 
 # TODO ======================points part=========================
 def check_params(arg_dict, need_fields):
@@ -604,19 +619,20 @@ def pretreatment_points(curve_points_dicts, pretreatment_args):
 
 #
 class MakeTimeZoneThread(threading.Thread):
-    def __init__(self, curve_points_dicts):
+    def __init__(self, curve_points_dicts, png_addr):
         threading.Thread.__init__(self)
         self.curve_points_dicts = curve_points_dicts
+        self.png_addr = png_addr
 
     def run(self):
-        time_frequency_transformation_to_png(curve_points_dicts=self.curve_points_dicts)
+        time_frequency_transformation_to_png(curve_points_dicts=self.curve_points_dicts, png_addr=self.png_addr)
 
 
 def transformation_points(curve_points_dicts):
     """
     将预处理后的数据进行转化成频率图和时域图
     :param curve_points_dicts: 曲线和原始点信息的结合 -> 以及预处理后的数据
-    :return:
+    :return: 时域图名字
     """
 
     for curve_id, curve_points_dict in curve_points_dicts.items():
@@ -630,10 +646,13 @@ def transformation_points(curve_points_dicts):
         # 遇到转换问题了，complex无法序列化，看是不是要把图片传给前端
         # points_info["point_time_cwtmatr"] = point_time_cwtmatr.tolist()
         # points_info["point_time_freqs"] = point_time_freqs.tolist()
-    time_zone_thread = MakeTimeZoneThread(curve_points_dicts)
+    t_f_png_name = "_".join(curve_points_dicts.keys()) + ".jpg"
+    png_addr = os.path.join(time_frequency_pngs_dir_path, t_f_png_name)
+    if os.path.isfile(png_addr):
+        os.remove(png_addr)
+    time_zone_thread = MakeTimeZoneThread(curve_points_dicts, png_addr)
     time_zone_thread.start()
-    png_addr = os.getcwd() + "\\time_domain_pngs\\" + "_".join(curve_points_dicts.keys()) + ".jpg"
-    return png_addr
+    return t_f_png_name
 
 
 def get_pd_raw_datas(curve_points_dicts):
@@ -667,7 +686,10 @@ def time_and_frequency_feature_extraction(curve_points_dicts):
         # 补充时域提取信息
         time_extract_tool = TimeDomainFeatureExtraction(raw_datas=points_info["raw_datas"], ts_list=points_info["ts"])
         # 自相关系数
-        for k in [1, 2]:
-            points_info["time_domain_feature_extract_result"][f"{k}阶自相关系数"] = \
-                time_extract_tool.get_auto_correlation_coefficient(k)
-        points_info["time_domain_feature_extract_result"][f"波形复杂度"] = time_extract_tool.get_waveform_complexity()
+        points_info["time_domain_feature_extract_result"][f"first_autocorrelation"] = \
+            time_extract_tool.get_auto_correlation_coefficient(1)
+        points_info["time_domain_feature_extract_result"][f"second_autocorrelation"] = \
+            time_extract_tool.get_auto_correlation_coefficient(2)
+        points_info["time_domain_feature_extract_result"][
+            "waveform_complexity"] = time_extract_tool.get_waveform_complexity()
+        index += 1

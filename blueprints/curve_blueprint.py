@@ -4,19 +4,22 @@ from util import convert_utc_to_datetime, get_all_file_in_path
 from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
     get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
-    transformation_points, time_and_frequency_feature_extraction
+    transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time
 from flask import request
 from exts import db
 import time
 import json
 from flask import current_app
 import gzip
+import datetime
 from flask import send_file
 
 import os
 
 bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve")
 file_prefix = "offline_earthquake_files"
+# 时频图存放路径文件夹
+tf_pngs_dir_path = os.path.realpath("time_frequency_pngs")
 
 
 @bp.route("/upload_curve", methods=['GET', 'POST'])
@@ -110,7 +113,7 @@ def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
         "field": ["raw_data"],
         "filter": filters,
         "time_range": {
-            "start_ts": start_ts,  # ms为单位
+            "start_ts": start_ts,  # us为单位
             "end_ts": end_ts
         },
         "window": window,
@@ -227,7 +230,7 @@ def search_points_and_transform():
     5.查询tdengine获取原始数据信息
     6.将曲线数据和原始数据结合
     7.预处理曲线数据
-    8.添加转化成频域时域数据
+    8.添加转化成频域时域数据,并获取时频图存放位置
     9.特征提取
     :return:
     """
@@ -252,12 +255,13 @@ def search_points_and_transform():
         start_ts = min(stat_ts_list)
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
     # tdengine 查询需要用us
-    start_ts = start_ts * 1000
-    end_ts = end_ts * 1000
+    start_ts = str(start_ts) + "000000"
+    end_ts = str(end_ts) + "000000"
 
     # step four
     tdengine_query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters={},
                                                window={}, fields=["raw_data"])
+
     # step five
     curve_points_dict = get_curve_points_by_tdengine(arg_dict=tdengine_query_args)
 
@@ -271,13 +275,14 @@ def search_points_and_transform():
     pretreatment_points(curve_infos, pretreatment_args)
 
     # step eight
-    transformation_points(curve_infos)
+    t_f_png_name = transformation_points(curve_infos)
 
     # step nine
     time_and_frequency_feature_extraction(curve_infos)
 
     query_end_time = time.time()
-    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
+    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time,
+           "t_f_png_name": t_f_png_name}
     return gzip_compress_response(res)
 
 
@@ -298,13 +303,12 @@ def search_curves_in_same_file():
     file_name = get_file_name_by_curve_id(curve_id)
     curve_ids = get_curve_ids_by_file_name(file_name)
     query_end_time = time.time()
-    return jsonify(
-        {
-            "cost_time": query_end_time - query_start_time,
-            "status": "200",
-            "curve_ids": curve_ids
-        }
-    )
+    res = {
+        "cost_time": query_end_time - query_start_time,
+        "status": "200",
+        "curve_ids": curve_ids
+    }
+    return gzip_compress_response(res)
 
 
 @bp.route("/upload_test")
@@ -317,7 +321,7 @@ def test_curve_upload():
 @bp.route("/test_png")
 def test_png():
     image_data = open(
-        r"D:\python_projects\earthquake_backend\time_domain_pngs\XJ.AHQ.00.BHE_XJ.AHQ.00.BHN_XJ.AHQ.00.BHZ.jpg",
+        r"D:\python_projects\earthquake_backend\time_frequency_pngs\XJ.AHQ.00.BHE_XJ.AHQ.00.BHN_XJ.AHQ.00.BHZ.jpg",
         "rb").read()
     rst = jsonify({"status": 200})
     response = make_response(image_data)
@@ -325,5 +329,50 @@ def test_png():
     return response
 
 
-if __name__ == '__main__':
-    print("1")
+@bp.route("/get_tf_png")
+def get_tf_png():
+    """
+      get t_f_png from local file with png_addr
+    """
+
+    query_start_time = time.time()
+    args_str = request.form.get("args", "{}")
+    args = json.loads(args_str)
+    print(args)
+    if not args.__contains__("t_f_png_name"):
+        raise ValueError("无t_f_png_name")
+
+    png_addr = os.path.join(tf_pngs_dir_path, args["t_f_png_name"])
+    image_data = open(png_addr, "rb").read()
+    response = make_response(image_data)
+    response.headers['Content-Type'] = 'image/png'  # 返回的内容类型必须修改
+    return response
+
+
+
+@bp.route("/change_p_s_start_time")
+def change_p_s_start_time():
+    query_start_time = time.time()
+    args_str = request.form.get("args", "{}")
+    args = json.loads(args_str)
+    print(args)
+    if not args.__contains__("curve_id"):
+        raise ValueError("无curve_id")
+    if not args.__contains__("p_start_time"):
+        raise ValueError("无p_start_time")
+    if not args.__contains__("s_start_time"):
+        raise ValueError("无s_start_time")
+    file_name = get_file_name_by_curve_id(args["curve_id"])
+    curve_ids = get_curve_ids_by_file_name(file_name)
+    p_start_date = datetime.datetime.fromtimestamp(args["p_start_time"])
+    s_start_date = datetime.datetime.fromtimestamp(args["s_start_time"])
+    for curve_id in curve_ids:
+        chang_curve_p_s_start_time(curve_id=curve_id, p_start_date=p_start_date, s_start_date=s_start_date)
+
+    query_end_time = time.time()
+    res = {
+        "cost_time": query_end_time - query_start_time,
+        "status": "200",
+        "curve_ids": curve_ids
+    }
+    return res

@@ -30,14 +30,14 @@ def frequency_domain_transformation(t_array, y_array):
     # return t_array, abs(fft(y_array))
 
 
-def time_frequency_transformation_to_png(curve_points_dicts):
+def time_frequency_transformation_to_png(curve_points_dicts, png_addr):
     """
     小波变换 得到时频图， 频率随着时间变化的图
     小波变换并将产生的图 通过f.savefig保存下来，返回地址
     :param curve_points_dicts: 时间范围
-    :return: 具体返回啥真搞不清除,前端课参考plt.contourf看能否画出来
+    :return: 具体返回啥搞不清除,前端课参考plt.contourf看能否画出来
     """
-    png_addr = os.getcwd() + "\\time_domain_pngs\\" + "_".join(curve_points_dicts.keys()) + ".jpg"
+
     plt.figure(figsize=(12, 4))
     size = len(curve_points_dicts)
     i = 1
@@ -49,13 +49,12 @@ def time_frequency_transformation_to_png(curve_points_dicts):
         plt.subplot(1, size, i)
         i = i + 1
         plt.contourf(t_array, freqs, abs(cwtmatr))
-        plt.title(f'time-frequency of {curve_id}')
+        plt.title(f'time-frequency-{curve_id}')
         plt.xlabel('Time/second')
         plt.ylabel('Frequency/Hz')
     plt.tight_layout()
     f = plt.gcf()  # 获取当前图像
     f.savefig(png_addr)
-    return png_addr
 
 
 def time_frequency_transformation(t_array, y_array):
