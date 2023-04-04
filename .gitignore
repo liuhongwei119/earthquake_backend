@@ -3,3 +3,7 @@ mseed_data/
 lhw/
 __pycache__/
 blueprints/__pycache__/
+time_frequency_pngs/
+ts_list.txt
+test.py
+test_precision.py

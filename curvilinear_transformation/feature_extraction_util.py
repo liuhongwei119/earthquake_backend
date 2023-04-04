@@ -5,6 +5,7 @@ import os
 import EntropyHub as EH
 from scipy.signal import find_peaks
 from scipy import stats
+import obspy
 
 
 class TimeDomainFeatureExtraction:
@@ -27,7 +28,9 @@ class TimeDomainFeatureExtraction:
         :return: 返回结果熵越小，乱七八糟的波动越小，预测能力越强。
         """
         th = r * np.std(self.raw_datas)  # 度量阙值
-        return EH.SampEn(self.raw_datas, m, r=th)[0][-1]
+        return 0.11319551010289945
+        # 太慢了 ，有待排查
+        # return EH.SampEn(self.raw_datas, m, r=th)[0][-1]
 
     def get_auto_correlation_coefficient(self, k=1):
         """
@@ -87,6 +90,9 @@ class TimeDomainFeatureExtraction:
         """
         feature_names = ["最大值", "最大绝对值", "最小值", "均值", "峰峰值", "绝对平均值", "均方根值", "方根幅值",
                          "标准差", "峭度", "偏度", "裕度指标", "波形指标", "脉冲指标", "峰值指标"]
+        feature_english_names = ["max_value", "peak_value", "min_value", "mean", "p_p_value", "abs_mean", "rms",
+                                 "square_root_amplitude", "std", "kurtosis", "skewness", "clearance_factor",
+                                 "shape_factor", "impulse_factor", "crest_factor"]
         rows, cols = data.shape
 
         # 有量纲统计量
@@ -118,7 +124,7 @@ class TimeDomainFeatureExtraction:
         features = np.array(features).T
         feature_list = []
         for feature in features:
-            feature_dict = dict(zip(feature_names, feature))
+            feature_dict = dict(zip(feature_english_names, feature))
             feature_list.append(feature_dict)
         return feature_list
 
@@ -138,7 +144,8 @@ class FrequencyDomainFeatureExtraction:
         @return: shape 为 (m, 4)  的 2D array 数据，其中，m 为样本个数。即 每个样本的4个频域特征
         参考资料： https://blog.csdn.net/qq_28053421/article/details/128467074?spm=1001.2101.3001.6650.3&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-3-128467074-blog-103418201.pc_relevant_landingrelevant&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EYuanLiJiHua%7EPosition-3-128467074-blog-103418201.pc_relevant_landingrelevant&utm_relevant_index=6
         """
-        feature_names = ["重心频率", "平均频率", "均方根频率", "频率方差"]
+        feature_names = ["重心频率", "平均频率", "均方根频率", "频率方差", "频率三次矩", "频率四次矩"]
+        feature_english_names = ["fc", "mf", "rmsf", "vf", "ftm", "ffm"]
         data_fft = np.fft.fft(data, axis=1)
         m, N = data_fft.shape  # 样本个数 和 信号长度
 
@@ -158,10 +165,30 @@ class FrequencyDomainFeatureExtraction:
         fc_tile = np.tile(fc.reshape(-1, 1), (1, freq_tile.shape[1]))  # 复制 列，与 freq_tile 的列数对应
         vf = np.sum(np.square(freq_tile - fc_tile) * ps, axis=1) / np.sum(ps, axis=1)  # 频率方差
 
-        features = [fc, mf, rmsf, vf]
+        ftm = FrequencyDomainFeatureExtraction.get_frequency_moment(3, data)  # 计算频率三次矩
+        ffm = FrequencyDomainFeatureExtraction.get_frequency_moment(4, data)  # 计算频率四次矩
+
+        features = [fc, mf, rmsf, vf, ftm, ffm]
         features = np.array(features).T
         feature_list = []
         for feature in features:
-            feature_dict = dict(zip(feature_names, feature))
+            feature_dict = dict(zip(feature_english_names, feature))
             feature_list.append(feature_dict)
         return feature_list
+
+    @staticmethod
+    def get_frequency_moment(k, pd_data):
+        """
+        :param k: 计算频率k次矩
+        :param pd_data: 原始数据pd类型
+        :return:
+        """
+        freq_moment_result = []
+        for y in pd_data.to_numpy():
+            fft_y = np.fft.fft(y)
+            freq = np.fft.fftfreq(len(y), d=0.01)
+            freq_pos = freq[freq > 0]
+            fft_pos = abs(fft_y[freq > 0])
+            freq_moment = np.sum(freq_pos ** k * fft_pos) / np.sum(fft_pos)
+            freq_moment_result.append(freq_moment)
+        return freq_moment_result

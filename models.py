@@ -27,6 +27,7 @@ class CurveEntity(db.Model):
     event_type = Column(String(100))  # 事件类型
     magnitude = Column(String(100))  # 震级
     p_start_time = Column(DateTime)  # p波开始时间
+    s_start_time = Column(DateTime)  # s波开始时间
     intensity = Column(String(100))  # 烈度
 
     def convert_to_dict(self):
@@ -39,6 +40,7 @@ class CurveEntity(db.Model):
         curve_dict["end_time"] = curve_dict["end_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["join_time"] = curve_dict["join_time"].strftime("%Y-%m-%d %H:%M:%S")
         curve_dict["p_start_time"] = curve_dict["p_start_time"].strftime("%Y-%m-%d %H:%M:%S")
+        curve_dict["s_start_time"] = curve_dict["s_start_time"].strftime("%Y-%m-%d %H:%M:%S")
         return curve_dict
 
 
@@ -46,12 +48,11 @@ class PointEntity:
     # measurement,tag_set field_set timestamp
     taos_measurement = "earthquake,"
     taos_tag_set = "network={},station={},location={},channel={},file_name={},curve_id={} "
-    taos_field_set = "raw_data={}"
+    taos_field_set = "raw_data={} "
     taos_ts = "{}"
 
     # TODO 存储曲线时许点相关信息
-    def __init__(self, network, station, location, channel, file_name, curve_id, point_data, join_time, point_fre,
-                 point_amp):
+    def __init__(self, network, station, location, channel, file_name, curve_id, point_data, join_time):
         self.network = network,
         self.station = station
         self.location = location
