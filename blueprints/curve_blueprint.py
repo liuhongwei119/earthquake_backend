@@ -13,8 +13,9 @@ from flask import current_app
 import gzip
 import datetime
 from flask import send_file
-
+import sys
 import os
+
 
 bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve")
 file_prefix = "offline_earthquake_files"
@@ -26,13 +27,13 @@ tf_pngs_dir_path = os.path.realpath("time_frequency_pngs")
 def curve_upload():
     upload_file = request.files.get("file")
     offline_earthquake_files_path = os.path.join(os.getcwd(), file_prefix)
-    print(offline_earthquake_files_path)
+    current_app.logger.info(offline_earthquake_files_path)
     if not os.path.exists(offline_earthquake_files_path):
         os.mkdir(offline_earthquake_files_path)
     if upload_file is not None:
         file_name = upload_file.filename
         save_path = os.path.join(offline_earthquake_files_path, file_name)
-        print(save_path)
+        current_app.logger.info(save_path)
         upload_file.save(save_path)
         # TODO dump_one_curve
         dump_one_curve(save_path)
@@ -47,7 +48,7 @@ def curve_upload():
 def delete_none_value_in_dict(transmit_dict):
     result_dict = {}
     for key, value in transmit_dict.items():
-        print(f"key {key} value {value}")
+        current_app.logger.info(f"key {key} value {value}")
         if len(value) != 0:
             result_dict[key] = value
 
@@ -79,7 +80,7 @@ def search_curves_with_condition():
     """
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
-    print(args)
+    current_app.logger.info(args)
     query_start_time = time.time()
     res = {}
     if (not args.__contains__("conditions") or len(args["conditions"]) == 0) \
@@ -193,12 +194,14 @@ def search_curves_and_points():
     filters = delete_none_value_in_dict(filters)
     window = delete_none_value_in_dict(window)
     # tdengine 查询需要用us
-    start_ts = start_ts * 1000
-    end_ts = end_ts * 1000
+    start_ts = str(start_ts) + "000000"
+    end_ts = str(end_ts) + "000000"
 
     # step four
     query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
                                       window=window, fields=fields)
+
+    current_app.logger.info(query_args)
     # step five
     curve_points_dict = get_curve_points_by_tdengine(arg_dict=query_args)
     # step six
@@ -238,7 +241,7 @@ def search_points_and_transform():
     query_start_time = time.time()
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
-    print(args)
+    current_app.logger.info(args)
 
     # step two
     curve_infos = get_curves(args.get("curve_ids", []))
@@ -295,7 +298,7 @@ def search_curves_in_same_file():
     query_start_time = time.time()
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
-    print(args)
+    current_app.logger.info(args)
     if not args.__contains__("curve_id"):
         raise ValueError("无curve_id")
 
@@ -338,7 +341,7 @@ def get_tf_png():
     query_start_time = time.time()
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
-    print(args)
+    current_app.logger.info(args)
     if not args.__contains__("t_f_png_name"):
         raise ValueError("无t_f_png_name")
 
@@ -349,13 +352,12 @@ def get_tf_png():
     return response
 
 
-
 @bp.route("/change_p_s_start_time")
 def change_p_s_start_time():
     query_start_time = time.time()
     args_str = request.form.get("args", "{}")
     args = json.loads(args_str)
-    print(args)
+    current_app.logger.info(args)
     if not args.__contains__("curve_id"):
         raise ValueError("无curve_id")
     if not args.__contains__("p_start_time"):
