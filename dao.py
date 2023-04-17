@@ -31,6 +31,7 @@ from taos import SmlProtocol, SmlPrecision
 import p_waves.pickWave
 import gzip
 import json
+from flask import current_app
 
 # You can generate an API token from the "API Tokens Tab" in the UI
 token = "6CayNW5Hv3QK32-UvVPQCWrGSwpHiXCYTPb_oJtKNaJm7ZaqqW92ZcMpQ1yDmw40q6elq9qncQpw5xpZMWhf6Q=="
@@ -70,7 +71,7 @@ class WriteInfluxDbThread(threading.Thread):
 
     def run(self):
         start_write_ts = int(time.time())
-        print(f"start write curve_id : {self.curve_id} into influxDB")
+        current_app.logger.info(f"start write curve_id : {self.curve_id} into influxDB")
         self.curve_stats.start_time = convert_utc_to_datetime(self.curve_stats.starttime)
         self.curve_stats.end_time = convert_utc_to_datetime(self.curve_stats.endtime)
         curve_points = []
@@ -90,7 +91,8 @@ class WriteInfluxDbThread(threading.Thread):
         dump_point_data_to_influx(curve_points)
 
         end_write_ts = int(time.time())
-        print(f"end write curve_id : {self.curve_id} into influxDB cost time : {end_write_ts - start_write_ts}")
+        current_app.logger.info(
+            f"end write curve_id : {self.curve_id} into influxDB cost time : {end_write_ts - start_write_ts}")
 
 
 class WriteTDengineThread(threading.Thread):
@@ -104,14 +106,14 @@ class WriteTDengineThread(threading.Thread):
 
     def run(self):
         start_write_ts = int(time.time())
-        print(f"start write curve_id : {self.curve_id} into tdengine")
+        current_app.logger.info(f"start write curve_id : {self.curve_id} into tdengine")
         self.curve_stats.start_time = convert_utc_to_datetime(self.curve_stats.starttime)
         self.curve_stats.end_time = convert_utc_to_datetime(self.curve_stats.endtime)
         curve_points = []
 
         ts_list = split_time_ranges(self.curve_stats.start_time, self.curve_stats.end_time, len(self.data_list))
         # test time
-        # print(type(ts_list[0].to_pydatetime()))
+        # current_app.logger.info(type(ts_list[0].to_pydatetime()))
         # with open("ts_list.txt", "w") as f:
         #     for ts in ts_list:
         #         a = str(ts.to_pydatetime().timestamp())
@@ -136,7 +138,7 @@ def dump_point_data_to_tdengine(curve_points):
     conn = get_tdengine_conn()
     affected_rows = conn.schemaless_insert(
         lines, SmlProtocol.LINE_PROTOCOL, SmlPrecision.MICRO_SECONDS)
-    print(affected_rows)  #
+    current_app.logger.info(affected_rows)  #
     conn.close()
 
 
@@ -144,7 +146,7 @@ def dump_one_curve(file_path):
     raw_datas = read(file_path)
     # 设置p波开始时间
     boolean, problem, p_wave_starttime, s_wave_starttime = p_waves.pickWave.pickWave(file_path)
-    print(p_wave_starttime)
+    current_app.logger.info(p_wave_starttime)
     # TODO dump curve info to mysql
     for raw_data in raw_datas:
         curve_data = raw_data.data
@@ -213,7 +215,7 @@ def dump_one_curve_to_tdengine(file_path):
     for thread in write_tdengine_threads:
         thread.join()
     end_time = time.time()
-    print(f"dump {file_path} cost :", end_time - start_time)
+    current_app.logger.info(f"dump {file_path} cost   {end_time - start_time}")
 
 
 # TODO ======================curve part=========================
@@ -317,6 +319,7 @@ def chang_curve_p_s_start_time(curve_id, p_start_date, s_start_date):
     CurveEntity.query.filter_by(curve_id=curve_id).update({'p_start_time': p_start_date, "s_start_time": s_start_date})
     db.session.commit()
 
+
 # TODO ======================points part=========================
 def check_params(arg_dict, need_fields):
     """
@@ -342,23 +345,23 @@ def create_database(conn):
 
 
 def fetch_all_point(conn: taos.TaosConnection, sql):
-    print(sql)
+    current_app.logger.info(sql)
     start_time = time.time()
     create_database(conn)
     result: taos.TaosResult = conn.query(sql)
     rows = result.fetch_all_into_dict()
-    print("row count:", result.row_count)
+    current_app.logger.info(f"row count: {result.row_count}")
     end_time = time.time()
-    print("query all cost :", end_time - start_time)
-    # print("===============all data===================")
-    # print(rows)
+    current_app.logger.info(f"query all cost : {end_time - start_time}")
+    # current_app.logger.info("===============all data===================")
+    # current_app.logger.info(rows)
     conn.close()
     raw_data_list = []
     point_fre_list = []
     point_amp_list = []
     ts_list = []
-    # print(rows)
-    # print(type(rows[0]["_ts"]))
+    # current_app.logger.info(rows)
+    # current_app.logger.info(type(rows[0]["_ts"]))
     for row in rows:
         if row.__contains__("raw_data"):
             raw_data_list.append(row["raw_data"])
@@ -391,11 +394,11 @@ def get_curve_points_by_tdengine(arg_dict):
     }
     """
     try:
-        print(arg_dict)
+        current_app.logger.info(arg_dict)
         check_params(arg_dict, ["measurement", "time_range", "field"])
         check_params(arg_dict["time_range"], ["start_ts"])
     except ValueError as e:
-        print("查询tdengine参数有问题", e)
+        current_app.logger.info("查询tdengine参数有问题", e)
         return
 
     res = {}
@@ -442,11 +445,11 @@ def get_curve_points_by_influx(arg_dict):
     }
     """
     try:
-        print(arg_dict)
+        current_app.logger.info(arg_dict)
         check_params(arg_dict, ["measurement", "time_range", "field"])
         check_params(arg_dict["time_range"], ["start_ts"])
     except ValueError as e:
-        print("查询influx参数有问题", e)
+        current_app.logger.info("查询influx参数有问题", e)
         return
 
     query = f"""
@@ -471,7 +474,7 @@ def get_curve_points_by_influx(arg_dict):
         measurement_str = f""" r["_measurement"] == "{measurement}" """
         measurement_list.append(measurement_str)
     measurement_condition = " or ".join(measurement_list)
-    print(measurement_condition)
+    current_app.logger.info(measurement_condition)
     query = query + f"""
         |> filter(fn: (r) => {measurement_condition})
     """
@@ -501,7 +504,7 @@ def get_curve_points_by_influx(arg_dict):
     #     |> yield(name: "{arg_dict["measurement"]}")
     # """
 
-    print(query)
+    current_app.logger.info(query)
 
     measurement_res = {}
     for measurement in arg_dict["measurement"]:
@@ -537,7 +540,7 @@ def query_test():
         tables = client.query_api().query(query, org=org)
         for table in tables:
             for record in table.records:
-                print(record)
+                current_app.logger.info(record)
 
 
 def test_influx_write():
@@ -545,7 +548,7 @@ def test_influx_write():
     files = get_all_file_in_path(path=file_path, all_files=[])
     curve_points = []
     for file in files:
-        print(file)
+        current_app.logger.info(file)
         raw_datas = read(file)
         for raw_data in raw_datas:
             curve_id = raw_data.id
@@ -648,6 +651,7 @@ def transformation_points(curve_points_dicts):
         # points_info["point_time_freqs"] = point_time_freqs.tolist()
     t_f_png_name = "_".join(curve_points_dicts.keys()) + ".jpg"
     png_addr = os.path.join(time_frequency_pngs_dir_path, t_f_png_name)
+    current_app.logger.info(png_addr)
     if os.path.isfile(png_addr):
         os.remove(png_addr)
     time_zone_thread = MakeTimeZoneThread(curve_points_dicts, png_addr)
