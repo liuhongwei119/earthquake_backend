@@ -276,7 +276,6 @@ def search_points_and_transform():
     pretreatment_args = args["pretreatment_args"] if args.__contains__("pretreatment_args") else {}
     build_pretreatment_args(pretreatment_args)
     pretreatment_points(curve_infos, pretreatment_args)
-
     # step eight
     t_f_png_name = transformation_points(curve_infos)
 

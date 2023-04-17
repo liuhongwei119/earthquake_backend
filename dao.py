@@ -91,7 +91,8 @@ class WriteInfluxDbThread(threading.Thread):
         dump_point_data_to_influx(curve_points)
 
         end_write_ts = int(time.time())
-        current_app.logger.info(f"end write curve_id : {self.curve_id} into influxDB cost time : {end_write_ts - start_write_ts}")
+        current_app.logger.info(
+            f"end write curve_id : {self.curve_id} into influxDB cost time : {end_write_ts - start_write_ts}")
 
 
 class WriteTDengineThread(threading.Thread):
@@ -214,7 +215,7 @@ def dump_one_curve_to_tdengine(file_path):
     for thread in write_tdengine_threads:
         thread.join()
     end_time = time.time()
-    current_app.logger.info(f"dump {file_path} cost :", end_time - start_time)
+    current_app.logger.info(f"dump {file_path} cost   {end_time - start_time}")
 
 
 # TODO ======================curve part=========================
@@ -318,6 +319,7 @@ def chang_curve_p_s_start_time(curve_id, p_start_date, s_start_date):
     CurveEntity.query.filter_by(curve_id=curve_id).update({'p_start_time': p_start_date, "s_start_time": s_start_date})
     db.session.commit()
 
+
 # TODO ======================points part=========================
 def check_params(arg_dict, need_fields):
     """
@@ -348,9 +350,9 @@ def fetch_all_point(conn: taos.TaosConnection, sql):
     create_database(conn)
     result: taos.TaosResult = conn.query(sql)
     rows = result.fetch_all_into_dict()
-    current_app.logger.info("row count:", result.row_count)
+    current_app.logger.info(f"row count: {result.row_count}")
     end_time = time.time()
-    current_app.logger.info("query all cost :", end_time - start_time)
+    current_app.logger.info(f"query all cost : {end_time - start_time}")
     # current_app.logger.info("===============all data===================")
     # current_app.logger.info(rows)
     conn.close()
@@ -649,6 +651,7 @@ def transformation_points(curve_points_dicts):
         # points_info["point_time_freqs"] = point_time_freqs.tolist()
     t_f_png_name = "_".join(curve_points_dicts.keys()) + ".jpg"
     png_addr = os.path.join(time_frequency_pngs_dir_path, t_f_png_name)
+    current_app.logger.info(png_addr)
     if os.path.isfile(png_addr):
         os.remove(png_addr)
     time_zone_thread = MakeTimeZoneThread(curve_points_dicts, png_addr)
