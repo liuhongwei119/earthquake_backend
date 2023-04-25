@@ -1,7 +1,7 @@
 from flask import Flask
 import settings
 from exts import db, logger
-
+from blueprints.curve_blueprint import bp as curve_bp
 
 # factory 工厂（factory）
 # 是指创建其他对象的对象，通常是一个返回其他类的对象的函数或方法。
@@ -15,7 +15,7 @@ def create_app():
     # =========================加载配置========================
     app.config.from_object(config_class)
     # =========================注册蓝本========================
-
+    app.register_blueprint(curve_bp)
     # =========================初始化app扩展，丰富app功能=======================
     # 1.初始化SQLAlchemy
     db.init_app(app=app)

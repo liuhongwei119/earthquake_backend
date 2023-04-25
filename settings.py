@@ -20,6 +20,8 @@ class DevelopmentConfig(BaseConfig):
     DATABASE = "flask_earthquake"
     DB_URI = f"mysql+pymysql://{USERNAME}:{urlquote(PASSWORD)}@{HOSTNAME}:{PORT}/{DATABASE}?charset=utf8"
     SQLALCHEMY_DATABASE_URI = DB_URI
+    # TaosConnection_HOST
+    TaosHost = "stephanie"
 
 
 class TestConfig(BaseConfig):
@@ -36,6 +38,8 @@ class TestConfig(BaseConfig):
     DATABASE = "flask_earthquake"
     DB_URI = f"mysql+pymysql://{USERNAME}:{urlquote(PASSWORD)}@{HOSTNAME}:{PORT}/{DATABASE}?charset=utf8"
     SQLALCHEMY_DATABASE_URI = DB_URI
+    # TaosConnection_HOST
+    TaosHost = "stephanie"
 
 
 class ProductionConfig(BaseConfig):
@@ -52,3 +56,5 @@ class ProductionConfig(BaseConfig):
     DATABASE = "flask_earthquake"
     DB_URI = f"mysql+pymysql://{USERNAME}:{urlquote(PASSWORD)}@{HOSTNAME}:{PORT}/{DATABASE}?charset=utf8"
     SQLALCHEMY_DATABASE_URI = DB_URI
+    # TaosConnection_HOST
+    TaosHost = "127.0.0.1"
