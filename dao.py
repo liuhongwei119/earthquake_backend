@@ -335,7 +335,7 @@ def check_params(arg_dict, need_fields):
 
 
 def get_tdengine_conn():
-    conn: taos.TaosConnection = taos.connect(host="stephanie", user="root", password="taosdata", database="test",
+    conn: taos.TaosConnection = taos.connect(host="127.0.0.1", user="root", password="taosdata", database="test",
                                              port=6030)
     return conn
 
