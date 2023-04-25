@@ -32,6 +32,7 @@ import p_waves.pickWave
 import gzip
 import json
 from flask import current_app
+from curvilinear_transformation import filter_util
 
 # You can generate an API token from the "API Tokens Tab" in the UI
 token = "6CayNW5Hv3QK32-UvVPQCWrGSwpHiXCYTPb_oJtKNaJm7ZaqqW92ZcMpQ1yDmw40q6elq9qncQpw5xpZMWhf6Q=="
@@ -697,3 +698,23 @@ def time_and_frequency_feature_extraction(curve_points_dicts):
         points_info["time_domain_feature_extract_result"][
             "waveform_complexity"] = time_extract_tool.get_waveform_complexity()
         index += 1
+
+
+def do_filtering_data(curve_points_dicts, args):
+    """
+    增加滤波功能
+    :param curve_points_dicts: 曲线和原始点信息的结合 -> 以及预处理后的数据
+    :return:
+    """
+    if not args.__contains__("filters"):
+        return
+    else:
+        filters = args["filters"]
+    for curve_id, curve_points_dict in curve_points_dicts.items():
+        points_info = curve_points_dict["points_info"]
+        y_array = points_info["raw_datas"]
+        t_array = points_info["ts"]
+        # for filter_name, filter_method in filter_util.pass_dict.items():
+        #     points_info[filter_name] = filter_method(y_array).tolist()
+        for filter_name in filters:
+            points_info[filter_name] = filter_util.pass_dict[filter_name](y_array).tolist()
