@@ -335,7 +335,7 @@ def check_params(arg_dict, need_fields):
 
 
 def get_tdengine_conn():
-    conn: taos.TaosConnection = taos.connect(host="127.0.0.1", user="root", password="taosdata", database="test",
+    conn: taos.TaosConnection = taos.connect(host=current_app.config.get("TaosHost"), user="root", password="taosdata", database="test",
                                              port=6030)
     return conn
 
@@ -706,10 +706,12 @@ def do_filtering_data(curve_points_dicts, args):
     :param curve_points_dicts: 曲线和原始点信息的结合 -> 以及预处理后的数据
     :return:
     """
+    current_app.logger.info("do_filtering_data")
     if not args.__contains__("filters"):
         return
     else:
         filters = args["filters"]
+    current_app.logger.info(filters)
     for curve_id, curve_points_dict in curve_points_dicts.items():
         points_info = curve_points_dict["points_info"]
         y_array = points_info["raw_datas"]

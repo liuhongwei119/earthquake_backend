@@ -261,6 +261,14 @@ def search_points_and_transform():
     start_ts = str(start_ts) + "000000"
     end_ts = str(end_ts) + "000000"
 
+    if args.__contains__("start_ts") and args['start_ts'] != "":
+        start_ts = args['start_ts']
+    else:
+        stat_ts_list = []
+        for curve_id in curve_ids:
+            stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
+        start_ts = min(stat_ts_list)
+
     # step four
     tdengine_query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters={},
                                                window={}, fields=["raw_data"])
