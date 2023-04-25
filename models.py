@@ -72,3 +72,13 @@ class PointEntity:
                          PointEntity.taos_field_set.format(self.point_data) + \
                          PointEntity.taos_ts.format(us)
         return influx_row_str
+
+
+class OnlineFlashInfo(db.Model):
+    __tablename__ = "online_flash_info"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    network = Column(String(100), nullable=False)
+    station = Column(String(100), nullable=False)
+    location = Column(String(100), nullable=False)
+    channel = Column(String(100), nullable=False)
+    start_time = Column(DateTime, nullable=False)
