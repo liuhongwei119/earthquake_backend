@@ -194,8 +194,8 @@ def search_curves_and_points():
     filters = delete_none_value_in_dict(filters)
     window = delete_none_value_in_dict(window)
     # tdengine 查询需要用us
-    start_ts = str(start_ts) + "000000"
-    end_ts = str(end_ts) + "000000"
+    start_ts = str(start_ts) + "000"
+    end_ts = str(end_ts) + "000"
 
     # step four
     query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
@@ -258,8 +258,8 @@ def search_points_and_transform():
         start_ts = min(stat_ts_list)
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
     # tdengine 查询需要用us
-    start_ts = str(start_ts) + "000000"
-    end_ts = str(end_ts) + "000000"
+    start_ts = str(start_ts) + "000"
+    end_ts = str(end_ts) + "000"
 
     # step four
     tdengine_query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters={},
