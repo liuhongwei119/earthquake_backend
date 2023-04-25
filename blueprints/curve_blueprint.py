@@ -4,7 +4,7 @@ from util import convert_utc_to_datetime, get_all_file_in_path
 from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
     get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
-    transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time
+    transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time, do_filtering_data
 from flask import request
 from exts import db
 import time
@@ -15,7 +15,6 @@ import datetime
 from flask import send_file
 import sys
 import os
-
 
 bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve")
 file_prefix = "offline_earthquake_files"
@@ -234,7 +233,8 @@ def search_points_and_transform():
     6.将曲线数据和原始数据结合
     7.预处理曲线数据
     8.添加转化成频域时域数据,并获取时频图存放位置
-    9.特征提取
+    9.增加滤波数据
+    10.特征提取
     :return:
     """
     # step one
@@ -279,9 +279,11 @@ def search_points_and_transform():
     # step eight
     t_f_png_name = transformation_points(curve_infos)
 
-    # step nine
-    time_and_frequency_feature_extraction(curve_infos)
+    # step nine 增加滤波数据
+    do_filtering_data(curve_infos, args)
 
+    # step ten
+    time_and_frequency_feature_extraction(curve_infos)
     query_end_time = time.time()
     res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time,
            "t_f_png_name": t_f_png_name}
@@ -331,7 +333,7 @@ def test_png():
     return response
 
 
-@bp.route("/get_tf_png")
+@bp.route("/get_tf_png", methods=['GET', 'POST'])
 def get_tf_png():
     """
       get t_f_png from local file with png_addr
@@ -343,15 +345,16 @@ def get_tf_png():
     current_app.logger.info(args)
     if not args.__contains__("t_f_png_name"):
         raise ValueError("无t_f_png_name")
-
     png_addr = os.path.join(tf_pngs_dir_path, args["t_f_png_name"])
+
+    current_app.logger.info(f"get png from {png_addr}")
     image_data = open(png_addr, "rb").read()
     response = make_response(image_data)
     response.headers['Content-Type'] = 'image/png'  # 返回的内容类型必须修改
     return response
 
 
-@bp.route("/change_p_s_start_time")
+@bp.route("/change_p_s_start_time", methods=['GET', 'POST'])
 def change_p_s_start_time():
     query_start_time = time.time()
     args_str = request.form.get("args", "{}")
@@ -377,3 +380,12 @@ def change_p_s_start_time():
         "curve_ids": curve_ids
     }
     return res
+
+
+@bp.route("/test_form_check", methods=["GET", "POST"])
+def test_form_check():
+    """
+      test_form_check
+    """
+    print(request.form)
+    return "1"

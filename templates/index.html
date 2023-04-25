@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SocketIO Demo</title>
+    <script type="text/javascript" src="//cdn.bootcss.com/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.socket.io/3.1.2/socket.io.js"></script>
+</head>
+<body>
+
+<h2>Demo of SocketIO</h2>
+<div id="t"></div>
+<script>
+    $(document).ready(function () {
+        namespace = "/wechat"
+        url = 'http://' + document.domain + ':' + 5000 + namespace
+        var socket = io.connect(url);
+        console.log(url)
+
+        socket.emit("message", {"data": "zhangsan"})
+
+        socket.on('connect', function (data) {
+            socket.emit('message', {'data': 'I\'m connected!'});
+        });
+
+        socket.on('disconnect', function (data) {
+            socket.emit('message', {'data': 'I\'m disconnected!'});
+        });
+
+        socket.on('response', function (data) {
+            console.log(data.age)
+        });
+
+        socket.on('test_send', function (data) {
+            console.log(data)
+        });
+    });
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@ from gevent import pywsgi
 from flask_cors import CORS
 # 设置日志的记录等级
 from flask import Flask, request
-import loghandler
+import log_handler
 
 app = Flask(__name__)
 
@@ -22,10 +22,8 @@ migrate = Migrate(app, db)
 app.register_blueprint(curve_bp)
 
 # 添加日志配置
-app.logger.addHandler(loghandler.get_log_handler())
-# 激活上下文
-ctx = app.app_context()
-ctx.push()
+app.logger.addHandler(log_handler.get_log_handler())
+
 
 
 
