@@ -20,7 +20,7 @@ bp = Blueprint("offline_mysql_curve", __name__, url_prefix="/offline_mysql_curve
 file_prefix = "offline_earthquake_files"
 # 时频图存放路径文件夹
 tf_pngs_dir_path = os.path.realpath("time_frequency_pngs")
-taos_precision_suffix = current_app.config.get("taos_precision_suffix")
+
 
 @bp.route("/upload_curve", methods=['GET', 'POST'])
 def curve_upload():
@@ -193,8 +193,8 @@ def search_curves_and_points():
     filters = delete_none_value_in_dict(filters)
     window = delete_none_value_in_dict(window)
     # tdengine 查询需要用us
-    start_ts = str(start_ts) + taos_precision_suffix
-    end_ts = str(end_ts) + taos_precision_suffix
+    start_ts = str(start_ts) + "000000"
+    end_ts = str(end_ts) + "000000"
 
     # step four
     query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
@@ -258,8 +258,8 @@ def search_points_and_transform():
         start_ts = min(stat_ts_list)
     end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
     # tdengine 查询需要用us
-    start_ts = str(start_ts) + taos_precision_suffix
-    end_ts = str(end_ts) + taos_precision_suffix
+    start_ts = str(start_ts) + "000000"
+    end_ts = str(end_ts) + "000000"
 
     if args.__contains__("start_ts") and args['start_ts'] != "":
         start_ts = args['start_ts']

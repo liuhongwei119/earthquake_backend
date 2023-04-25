@@ -22,7 +22,6 @@ class DevelopmentConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = DB_URI
     # TaosConnection_HOST
     TaosHost = "stephanie"
-    taos_precision_suffix = "000000"
 
 
 class TestConfig(BaseConfig):
@@ -41,7 +40,6 @@ class TestConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = DB_URI
     # TaosConnection_HOST
     TaosHost = "stephanie"
-    taos_precision_suffix = "000000"
 
 
 class ProductionConfig(BaseConfig):
@@ -60,4 +58,3 @@ class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = DB_URI
     # TaosConnection_HOST
     TaosHost = "127.0.0.1"
-    taos_precision_suffix = "000"
