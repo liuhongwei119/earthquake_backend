@@ -376,8 +376,8 @@ def change_p_s_start_time():
         raise ValueError("无s_start_time")
     file_name = get_file_name_by_curve_id(args["curve_id"])
     curve_ids = get_curve_ids_by_file_name(file_name)
-    p_start_date = datetime.datetime.fromtimestamp(args["p_start_time"])
-    s_start_date = datetime.datetime.fromtimestamp(args["s_start_time"])
+    p_start_date = datetime.datetime.fromtimestamp(int(args["p_start_time"]))
+    s_start_date = datetime.datetime.fromtimestamp(int(args["s_start_time"]))
     for curve_id in curve_ids:
         chang_curve_p_s_start_time(curve_id=curve_id, p_start_date=p_start_date, s_start_date=s_start_date)
 
