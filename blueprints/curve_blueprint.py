@@ -96,6 +96,30 @@ def search_curves_with_condition():
     return gzip_compress_response(res)
 
 
+@bp.route("/curve_pagination_query", methods=['GET', 'POST'])
+def curve_pagination_query():
+    """
+    """
+
+    response_object = {'status': 'success'}
+    if request.method == 'POST':
+        post_data = request.get_json()
+        print('调用query方传过来的参数是', post_data)
+        pagesize = post_data.get('pagesize')
+        page = post_data.get('page')
+        books = select_data_all()
+        total = 0
+        for book in books:
+            total = total + 1  # 计算总数据
+        books = query_data_page(pagesize, page)
+        response_object['message'] = '图书查询成功!'
+        response_object['data'] = books
+        response_object['pagesize'] = pagesize
+        response_object['page'] = page
+        response_object['total'] = total
+        return response_object
+
+
 # TODO ======================curve info and points=========================
 def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
     """

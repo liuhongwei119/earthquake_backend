@@ -248,6 +248,32 @@ def get_curves(curve_ids=None):
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
+# def get_page_curves(pagesize, page):
+#     """
+#
+#     """
+#
+#     pagesize = pagesize
+#     offset = pagesize * (page - 1)
+#     curve_list = []
+#     books = CurveEntity.query.offset(offset).limit(pagesize).all()  # 分页查询语法
+#     for s in books:
+#         dic = {}
+#         dic['id'] = s.id
+#         dic['title'] = s.title
+#         dic['author'] = s.author
+#         dic['read_status'] = s.read_status
+#         book_list.append(dic)
+#     return book_list
+#
+#
+#     if curve_ids is None or len(curve_ids) == 0:
+#         curve_infos = CurveEntity.query.order_by(CurveEntity.file_name).all()
+#     else:
+#         curve_infos = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
+#     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
+#     return format_curve_infos_res(curve_infos)
+
 
 def get_curves_with_or_condition(arg_dict):
     """

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, make_response, request, current_app
 import json
 import time
+import os
 
 from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
@@ -9,6 +10,23 @@ from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curv
     get_frequency_domain_curve, get_time_frequency_curve, get_feature_extraction_curve
 
 bp = Blueprint("offline_curve_analysis", __name__, url_prefix="/offline_curve_analysis")
+# 时频图存放路径文件夹
+tf_pngs_dir_path = os.path.realpath("time_frequency_pngs")
+
+@bp.route('/tf_pngs', methods=['GET'])
+def get_tf_png():
+    """
+      get t_f_png from local file with png_addr
+    """
+
+    png_name = request.args.get("png_name")
+    png_addr = os.path.join(tf_pngs_dir_path, png_name)
+
+    current_app.logger.info(f"get png from {png_addr}")
+    image_data = open(png_addr, "rb").read()
+    response = make_response(image_data)
+    response.headers['Content-Type'] = 'image/png'  # 返回的内容类型必须修改
+    return response
 
 
 @bp.route("/get_time_domain_info", methods=['GET', 'POST'])
@@ -170,6 +188,7 @@ def get_time_frequency_info():
     query_end_time = time.time()
     res = {"status": 200, "t_f_png_name": t_f_png_name, "cost_time": query_end_time - query_start_time}
     return gzip_compress_response(res)
+
 
 def get_pretreatment_data(args):
     # 通过mysql查询获取curve曲线信息（曲线信息存储在mysql，曲线点信息存储在tdengine）
