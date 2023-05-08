@@ -231,9 +231,9 @@ def search_points_and_transform():
     4.根据参数构造查询格式
     5.查询tdengine获取原始数据信息
     6.将曲线数据和原始数据结合
+       6.1 将原始数据进行滤波变换
     7.预处理曲线数据
     8.添加转化成频域时域数据,并获取时频图存放位置
-    9.增加滤波数据
     10.特征提取
     :return:
     """
@@ -280,15 +280,15 @@ def search_points_and_transform():
     encapsulation_curve_points_res(curve_points_dict=curve_points_dict, curve_infos=curve_infos,
                                    curve_ids=curve_ids)
 
+    # 6.1 将原始数据进行滤波变换
+    do_filtering_data(curve_infos, args)
+
     # step seven
     pretreatment_args = args["pretreatment_args"] if args.__contains__("pretreatment_args") else {}
     build_pretreatment_args(pretreatment_args)
     pretreatment_points(curve_infos, pretreatment_args)
     # step eight
     t_f_png_name = transformation_points(curve_infos)
-
-    # step nine 增加滤波数据
-    do_filtering_data(curve_infos, args)
 
     # step ten
     time_and_frequency_feature_extraction(curve_infos)
@@ -397,3 +397,71 @@ def test_form_check():
     """
     print(request.form)
     return "1"
+
+
+@bp.route("/get_filter_data", methods=['GET', 'POST'])
+def search_filter_data():
+    """
+    args =
+    {
+        "curve_ids": ["XJ.AKS.00.BHE", "XJ.AKS.00.BHN", "XJ.AKS.00.BHZ"],
+        "filters": ["bandpass", "highpass","lowpass"]
+    }
+    查询步骤：
+    1.解析参数
+    2.通过mysql查询获取curve曲线信息（曲线信息存储在mysql，曲线点信息存储在tdengine）
+    3.设置相关参数及其默认值
+    4.根据参数构造查询格式
+    5.查询tdengine获取原始数据信息
+    6.增加滤波数据
+    :return:
+    """
+    # step one
+    query_start_time = time.time()
+    args_str = request.form.get("args", "{}")
+    args = json.loads(args_str)
+    current_app.logger.info(args)
+
+    # step two
+    curve_infos = get_curves(args.get("curve_ids", []))
+    curve_ids = curve_infos.keys()
+
+    # step three
+    start_ts = 0
+    if args.__contains__("start_ts") and args['start_ts'] != "":
+        start_ts = args['start_ts']
+    else:
+        stat_ts_list = []
+        for curve_id in curve_ids:
+            stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
+        start_ts = min(stat_ts_list)
+    end_ts = args["end_ts"] if args.__contains__("end_ts") else int(time.time())
+    # tdengine 查询需要用us
+    start_ts = str(start_ts) + "000000"
+    end_ts = str(end_ts) + "000000"
+
+    if args.__contains__("start_ts") and args['start_ts'] != "":
+        start_ts = args['start_ts']
+    else:
+        stat_ts_list = []
+        for curve_id in curve_ids:
+            stat_ts_list.append(curve_infos[curve_id]["curve_info"]["start_ts"])
+        start_ts = min(stat_ts_list)
+
+    # step four
+    tdengine_query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters={},
+                                               window={}, fields=["raw_data"])
+
+    # step five
+    curve_points_dict = get_curve_points_by_tdengine(arg_dict=tdengine_query_args)
+
+    # step six
+    encapsulation_curve_points_res(curve_points_dict=curve_points_dict, curve_infos=curve_infos,
+                                   curve_ids=curve_ids)
+
+    # step nine 增加滤波数据
+    do_filtering_data(curve_infos, args)
+
+    query_end_time = time.time()
+    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
+    return gzip_compress_response(res)
