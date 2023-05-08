@@ -38,7 +38,7 @@ def time_frequency_transformation_to_png(curve_points_dicts, png_addr):
     :return: 具体返回啥搞不清除,前端课参考plt.contourf看能否画出来
     """
 
-    plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(10.82, 2.2))
     size = len(curve_points_dicts)
     i = 1
     for curve_id, curve_points_dict in curve_points_dicts.items():

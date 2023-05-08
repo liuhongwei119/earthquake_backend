@@ -335,7 +335,8 @@ def check_params(arg_dict, need_fields):
 
 
 def get_tdengine_conn():
-    conn: taos.TaosConnection = taos.connect(host=current_app.config.get("TaosHost"), user="root", password="taosdata", database="test",
+    conn: taos.TaosConnection = taos.connect(host=current_app.config.get("TaosHost"), user="root", password="taosdata",
+                                             database="test",
                                              port=6030)
     return conn
 
@@ -644,12 +645,8 @@ def transformation_points(curve_points_dicts):
         y_array = points_info["raw_datas"]
         t_array = points_info["ts"]
         point_amp_list, point_fre_list = frequency_domain_transformation(t_array=t_array, y_array=y_array)
-        # point_time_cwtmatr, point_time_freqs = time_domain_transformation(t_array=t_array, y_array=y_array)
         points_info["point_amp_list"] = point_amp_list.tolist()
         points_info["point_fre_list"] = point_fre_list.tolist()
-        # 遇到转换问题了，complex无法序列化，看是不是要把图片传给前端
-        # points_info["point_time_cwtmatr"] = point_time_cwtmatr.tolist()
-        # points_info["point_time_freqs"] = point_time_freqs.tolist()
     t_f_png_name = "_".join(curve_points_dicts.keys()) + ".jpg"
     png_addr = os.path.join(time_frequency_pngs_dir_path, t_f_png_name)
     current_app.logger.info(png_addr)
@@ -659,6 +656,64 @@ def transformation_points(curve_points_dicts):
     time_zone_thread.start()
     return t_f_png_name
 
+
+def get_time_frequency_curve(curve_points_dicts):
+    """
+    将预处理后的数据进行转化成时频图
+    :param curve_points_dicts: 预处理后的数据
+    :return: 时域图名字
+    """
+    t_f_png_name = "_".join(curve_points_dicts.keys()) + ".jpg"
+    png_addr = os.path.join(time_frequency_pngs_dir_path, t_f_png_name)
+    current_app.logger.info(png_addr)
+    if os.path.isfile(png_addr):
+        os.remove(png_addr)
+    time_frequency_transformation_to_png(curve_points_dicts=curve_points_dicts, png_addr=png_addr)
+    return t_f_png_name
+
+
+def get_frequency_domain_curve(curve_points_dicts):
+    """
+    将预处理后的数据进行转化成频域图
+    :param curve_points_dicts: 预处理后的数据
+    :return: 时域图名字
+    """
+
+    for curve_id, curve_points_dict in curve_points_dicts.items():
+        points_info = curve_points_dict["points_info"]
+        y_array = points_info["raw_datas"]
+        t_array = points_info["ts"]
+        point_amp_list, point_fre_list = frequency_domain_transformation(t_array=t_array, y_array=y_array)
+        points_info["point_amp_list"] = point_amp_list.tolist()
+        points_info["point_fre_list"] = point_fre_list.tolist()
+        del points_info["raw_datas"]
+        del points_info["ts"]
+
+
+def get_feature_extraction_curve(curve_points_dicts):
+    pd_data = get_pd_raw_datas(curve_points_dicts)
+    time_domain_feature_extract_result = TimeDomainFeatureExtraction.get_time_domain_feature(data=pd_data)
+    frequency_domain_feature_extract_result = FrequencyDomainFeatureExtraction.get_frequency_domain_feature(
+        data=pd_data, sampling_frequency=100)
+
+    index = 0
+    for curve_id, curve_points_dict in curve_points_dicts.items():
+        points_info = curve_points_dict["points_info"]
+        # 获取基本的提取信息
+        points_info["time_domain_feature_extract_result"] = time_domain_feature_extract_result[index]
+        points_info["frequency_domain_feature_extract_result"] = frequency_domain_feature_extract_result[index]
+        # 补充时域提取信息
+        time_extract_tool = TimeDomainFeatureExtraction(raw_datas=points_info["raw_datas"], ts_list=points_info["ts"])
+        # 自相关系数
+        points_info["time_domain_feature_extract_result"][f"first_autocorrelation"] = \
+            time_extract_tool.get_auto_correlation_coefficient(1)
+        points_info["time_domain_feature_extract_result"][f"second_autocorrelation"] = \
+            time_extract_tool.get_auto_correlation_coefficient(2)
+        points_info["time_domain_feature_extract_result"][
+            "waveform_complexity"] = time_extract_tool.get_waveform_complexity()
+        index += 1
+        del points_info["raw_datas"]
+        del points_info["ts"]
 
 def get_pd_raw_datas(curve_points_dicts):
     """
@@ -700,6 +755,7 @@ def time_and_frequency_feature_extraction(curve_points_dicts):
         index += 1
 
 
+
 def do_filtering_data(curve_points_dicts, args):
     """
     增加滤波功能
@@ -707,16 +763,35 @@ def do_filtering_data(curve_points_dicts, args):
     :return:
     """
     current_app.logger.info("do_filtering_data")
-    if not args.__contains__("filters"):
+    if not args.__contains__("filter") or args["filter"]["filter_name"] == "none":
         return
     else:
-        filters = args["filters"]
-    current_app.logger.info(filters)
+        filter_method = args["filter"]
+        filter_name = filter_method["filter_name"]
+        filter_args = filter_method["filter_args"]
+    current_app.logger.info(filter_name)
+    current_app.logger.info(filter_args)
     for curve_id, curve_points_dict in curve_points_dicts.items():
         points_info = curve_points_dict["points_info"]
         y_array = points_info["raw_datas"]
         t_array = points_info["ts"]
         # for filter_name, filter_method in filter_util.pass_dict.items():
         #     points_info[filter_name] = filter_method(y_array).tolist()
-        for filter_name in filters:
-            points_info[filter_name] = filter_util.pass_dict[filter_name](y_array).tolist()
+        filtered_data = y_array
+        if filter_name == "bandpass":
+            filtered_data = filter_util.bandpass(data=y_array, freqmin=int(filter_args[0]),
+                                                 freqmax=int(filter_args[1]),
+                                                 df=int(filter_args[2]),
+                                                 corners=int(filter_args[3]),
+                                                 zerophase=filter_args[4] == "True").tolist()
+        if filter_name == "highpass":
+            filtered_data = filter_util.highpass(data=y_array, freq=int(filter_args[0]),
+                                                 df=int(filter_args[1]),
+                                                 corners=int(filter_args[2]),
+                                                 zerophase=filter_args[3] == "True").tolist()
+        if filter_name == "lowpass":
+            filtered_data = filter_util.lowpass(data=y_array, freq=int(filter_args[0]),
+                                                df=int(filter_args[1]),
+                                                corners=int(filter_args[2]),
+                                                zerophase=filter_args[3] == "True").tolist()
+        points_info["raw_datas"] = filtered_data
