@@ -124,10 +124,10 @@ def get_frequency_domain_info():
     # 根据参数预处理
     curve_infos = get_pretreatment_data(args)
     # 获取时频图
-    t_f_png_name = get_time_frequency_curve(curve_infos)
+    get_frequency_domain_curve(curve_infos)
 
     query_end_time = time.time()
-    res = {"status": 200, "t_f_png_name": t_f_png_name, "cost_time": query_end_time - query_start_time}
+    res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
     return gzip_compress_response(res)
 
 
