@@ -107,7 +107,6 @@ class WriteTDengineThread(threading.Thread):
 
     def run(self):
         start_write_ts = int(time.time())
-        current_app.logger.info(f"start write curve_id : {self.curve_id} into tdengine")
         self.curve_stats.start_time = convert_utc_to_datetime(self.curve_stats.starttime)
         self.curve_stats.end_time = convert_utc_to_datetime(self.curve_stats.endtime)
         curve_points = []
@@ -139,7 +138,7 @@ def dump_point_data_to_tdengine(curve_points):
     conn = get_tdengine_conn()
     affected_rows = conn.schemaless_insert(
         lines, SmlProtocol.LINE_PROTOCOL, SmlPrecision.MICRO_SECONDS)
-    current_app.logger.info(affected_rows)  #
+    print(affected_rows)  #
     conn.close()
 
 
@@ -248,31 +247,41 @@ def get_curves(curve_ids=None):
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
     return format_curve_infos_res(curve_infos)
 
-# def get_page_curves(pagesize, page):
-#     """
-#
-#     """
-#
-#     pagesize = pagesize
-#     offset = pagesize * (page - 1)
-#     curve_list = []
-#     books = CurveEntity.query.offset(offset).limit(pagesize).all()  # 分页查询语法
-#     for s in books:
-#         dic = {}
-#         dic['id'] = s.id
-#         dic['title'] = s.title
-#         dic['author'] = s.author
-#         dic['read_status'] = s.read_status
-#         book_list.append(dic)
-#     return book_list
-#
-#
-#     if curve_ids is None or len(curve_ids) == 0:
-#         curve_infos = CurveEntity.query.order_by(CurveEntity.file_name).all()
-#     else:
-#         curve_infos = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
-#     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
-#     return format_curve_infos_res(curve_infos)
+
+def get_page_curves_by_conditions(pagesize, page, conditions_dict):
+    """
+
+    """
+    query_list = []
+    for field_name, field_value in conditions_dict.items():
+        query_list.append(condition_fields[field_name] == field_value)
+
+    pagesize = pagesize
+    offset = pagesize * (page - 1)
+    total_curves = CurveEntity.query.filter(and_(*query_list)).all()
+    curves = total_curves[offset:offset + pagesize]
+    curve_list = list(map(lambda x: x.convert_to_dict(), curves))
+    return len(total_curves), curve_list
+
+
+def get_page_curves_by_ids(pagesize, page, curve_ids=None):
+    """
+    """
+    pagesize = pagesize
+    offset = pagesize * (page - 1)
+    total_curves = 0
+    curves = []
+    print(offset)
+    if curve_ids is None or len(curve_ids) == 0:
+        total_curves = CurveEntity.query.order_by(CurveEntity.file_name).all()
+        curves = CurveEntity.query.order_by(CurveEntity.file_name).offset(offset).limit(pagesize).all()
+    else:
+        total_curves = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
+        print(total_curves)
+        curves = total_curves[offset:offset + pagesize ]
+
+    curve_list = list(map(lambda x: x.convert_to_dict(), curves))
+    return len(total_curves), curve_list
 
 
 def get_curves_with_or_condition(arg_dict):
@@ -361,7 +370,7 @@ def check_params(arg_dict, need_fields):
 
 
 def get_tdengine_conn():
-    conn: taos.TaosConnection = taos.connect(host=current_app.config.get("TaosHost"), user="root", password="taosdata",
+    conn: taos.TaosConnection = taos.connect(host="stephanie", user="root", password="taosdata",
                                              database="test",
                                              port=6030)
     return conn
@@ -423,7 +432,7 @@ def get_curve_points_by_tdengine(arg_dict):
     """
     try:
         current_app.logger.info(arg_dict)
-        check_params(arg_dict, ["measurement", "time_range", "field"])
+        check_params(arg_dict, ["measurement", "time_range"])
         check_params(arg_dict["time_range"], ["start_ts"])
     except ValueError as e:
         current_app.logger.info("查询tdengine参数有问题", e)
@@ -431,9 +440,7 @@ def get_curve_points_by_tdengine(arg_dict):
 
     res = {}
     for curve_id in arg_dict["measurement"]:
-        fields = arg_dict["fields"]
-        field_str = (", ").join(fields)
-        sql = f"""select {field_str} , _ts from earthquake where curve_id = "{curve_id}" """
+        sql = f"""select raw_data , _ts from earthquake where curve_id = "{curve_id}" """
         for filter_name, filter_value in arg_dict["filter"].items():
             sql = sql + f""" and {filter_name} = "{filter_value}" """
         sql = sql + f""" and _ts >= {arg_dict["time_range"]["start_ts"]} and _ts <= {arg_dict["time_range"]["end_ts"]} """
@@ -741,6 +748,7 @@ def get_feature_extraction_curve(curve_points_dicts):
         del points_info["raw_datas"]
         del points_info["ts"]
 
+
 def get_pd_raw_datas(curve_points_dicts):
     """
     :param curve_points_dicts: 数据
@@ -779,7 +787,6 @@ def time_and_frequency_feature_extraction(curve_points_dicts):
         points_info["time_domain_feature_extract_result"][
             "waveform_complexity"] = time_extract_tool.get_waveform_complexity()
         index += 1
-
 
 
 def do_filtering_data(curve_points_dicts, args):

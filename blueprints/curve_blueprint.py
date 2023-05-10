@@ -1,10 +1,14 @@
+import math
+
 from flask import Blueprint, jsonify, make_response
 
+from entity.view_vo import CurvePageVO
 from util import convert_utc_to_datetime, get_all_file_in_path
 from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
     get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
-    transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time, do_filtering_data
+    transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time, do_filtering_data \
+    , get_page_curves_by_conditions, get_page_curves_by_ids
 from flask import request
 from exts import db
 import time
@@ -47,7 +51,6 @@ def curve_upload():
 def delete_none_value_in_dict(transmit_dict):
     result_dict = {}
     for key, value in transmit_dict.items():
-        current_app.logger.info(f"key {key} value {value}")
         if len(value) != 0:
             result_dict[key] = value
 
@@ -96,31 +99,90 @@ def search_curves_with_condition():
     return gzip_compress_response(res)
 
 
-@bp.route("/curve_pagination_query", methods=['GET', 'POST'])
-def curve_pagination_query():
+@bp.route("/get_curve_page", methods=['POST'])
+def get_curve_page():
     """
     """
 
     response_object = {'status': 'success'}
     if request.method == 'POST':
         post_data = request.get_json()
+        print(type(post_data))
         print('调用query方传过来的参数是', post_data)
         pagesize = post_data.get('pagesize')
         page = post_data.get('page')
-        books = select_data_all()
-        total = 0
-        for book in books:
-            total = total + 1  # 计算总数据
-        books = query_data_page(pagesize, page)
-        response_object['message'] = '图书查询成功!'
-        response_object['data'] = books
-        response_object['pagesize'] = pagesize
-        response_object['page'] = page
-        response_object['total'] = total
+        conditions_dict = delete_none_value_in_dict(post_data.get('conditions_dict'))
+        print('pagesize', pagesize)
+        print('conditions_dict', conditions_dict)
+        curve_total, curves = get_page_curves_by_conditions(pagesize, page, conditions_dict)
+        response_object['message'] = '分页曲线查询成功!'
+        response_object['data'] = curves  # 当前页面数据
+        response_object['pagesize'] = pagesize  # 页面size
+        response_object['page'] = page  # 当前页码
+        response_object['curve_total'] = curve_total  # 结果数量总和
+        response_object['page_total'] = math.ceil(curve_total / pagesize)  # 页数量总和
         return response_object
 
 
 # TODO ======================curve info and points=========================
+
+
+@bp.route("/get_point_page", methods=['POST'])
+def get_point_page():
+    """
+    """
+
+    response_object = {'status': 'success'}
+    if request.method == 'POST':
+        post_data = request.get_json()
+        print(type(post_data))
+        print('调用query方传过来的参数是', post_data)
+        pagesize = post_data.get('pagesize')
+        page = post_data.get('page')
+        conditions_dict = delete_none_value_in_dict(post_data.get('conditions_dict'))
+        curve_ids = post_data.get('curve_ids')
+        if curve_ids is None or len(curve_ids) == 0:
+            curve_total, curves = get_page_curves_by_conditions(pagesize, page, conditions_dict)
+        else:
+            curve_total, curves = get_page_curves_by_ids(pagesize, page, curve_ids)
+
+        print(curves)
+        if len(curves) != 0 :
+            start_ts = post_data.get('start_ts')
+            start_ts = int(start_ts) \
+                if start_ts is not None \
+                else max(list(map(lambda x: x.get('start_ts'), curves)))
+            end_ts = post_data.get('end_ts')
+            end_ts = int(end_ts) \
+                if end_ts is not None \
+                else max(list(map(lambda x: x.get('end_ts'), curves)))
+
+            for curve in curves:
+                curve_id = curve['curve_id']
+                print(curve_id)
+                curve_points = get_curve_points_by_tdengine(
+                    {
+                        "measurement": [curve_id],
+                        "time_range": {
+                            "start_ts": str(start_ts) + "000000",
+                            "end_ts": str(end_ts) + "000000"
+                        },
+                        "filter": {}
+                    }
+                )
+                curve["points"] = curve_points[curve_id].get("raw_data_list")
+
+        response_object['message'] = '分页序列查询成功!'
+        response_object['data'] = curves  # 当前页面数据
+        response_object['pagesize'] = pagesize  # 页面size
+        response_object['page'] = page  # 当前页码
+        response_object['curve_total'] = curve_total  # 结果数量总和
+        response_object['page_total'] = math.ceil(curve_total / pagesize)  # 页数量总和
+
+        return gzip_compress_response(response_object)
+        # return response_object
+
+
 def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
     """
     此方法用作构造 通过tdengine的查询raw_data（原始数据）
@@ -224,7 +286,6 @@ def search_curves_and_points():
     query_args = build_get_points_arg(curve_ids=curve_ids, start_ts=start_ts, end_ts=end_ts, filters=filters,
                                       window=window, fields=fields)
 
-    current_app.logger.info(query_args)
     # step five
     curve_points_dict = get_curve_points_by_tdengine(arg_dict=query_args)
     # step six
@@ -349,7 +410,7 @@ def search_curves_in_same_file():
 
 @bp.route("/upload_test")
 def test_curve_upload():
-    dump_one_curve("XJ.AHQ.00.20221016085459.mseed")
+    dump_one_curve("XJ.ALS.00.20221016085608.mseed")
     rst = jsonify({"status": 200})
     return rst
 

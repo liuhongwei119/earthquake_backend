@@ -82,3 +82,5 @@ class OnlineFlashInfo(db.Model):
     location = Column(String(100), nullable=False)
     channel = Column(String(100), nullable=False)
     start_time = Column(DateTime, nullable=False)
+
+
