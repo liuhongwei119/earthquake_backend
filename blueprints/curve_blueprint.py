@@ -2,7 +2,6 @@ import math
 
 from flask import Blueprint, jsonify, make_response
 
-from entity.view_vo import CurvePageVO
 from util import convert_utc_to_datetime, get_all_file_in_path
 from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curves_with_or_condition, \
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
