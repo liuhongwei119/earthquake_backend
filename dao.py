@@ -264,7 +264,7 @@ def get_page_curves_by_conditions(pagesize, page, conditions_dict):
     return len(total_curves), curve_list
 
 
-def get_page_curves_by_ids(pagesize, page, curve_ids=None):
+def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None):
     """
     """
     pagesize = pagesize
@@ -278,9 +278,14 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None):
     else:
         total_curves = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
         print(total_curves)
-        curves = total_curves[offset:offset + pagesize ]
+        curves = total_curves[offset:offset + pagesize]
 
     curve_list = list(map(lambda x: x.convert_to_dict(), curves))
+    curve_list_temp = curve_list.copy()
+    for index, curve in enumerate(curve_list_temp):
+        for condition_name , condition_value in conditions_dict.items():
+            if curve[condition_name] != condition_value:
+                del curve_list[index]
     return len(total_curves), curve_list
 
 
@@ -353,6 +358,7 @@ def get_curve_ids_by_file_name(file_name):
 
 def chang_curve_p_s_start_time(curve_id, p_start_date, s_start_date):
     CurveEntity.query.filter_by(curve_id=curve_id).update({'p_start_time': p_start_date, "s_start_time": s_start_date})
+    # 使用sqlalchemy 更新p波s波起点
     db.session.commit()
 
 
