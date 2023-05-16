@@ -105,8 +105,8 @@ def get_curve_page():
 
     response_object = {'status': 'success'}
     if request.method == 'POST':
-        post_data = request.get_json()
-        print(type(post_data))
+        args_str = request.form.get("args", "{}")
+        post_data = json.loads(args_str)
         print('调用query方传过来的参数是', post_data)
         pagesize = post_data.get('pagesize')
         page = post_data.get('page')
@@ -133,8 +133,8 @@ def get_point_page():
 
     response_object = {'status': 'success'}
     if request.method == 'POST':
-        post_data = request.get_json()
-        print(type(post_data))
+        args_str = request.form.get("args", "{}")
+        post_data = json.loads(args_str)
         print('调用query方传过来的参数是', post_data)
         pagesize = post_data.get('pagesize')
         page = post_data.get('page')
@@ -143,10 +143,10 @@ def get_point_page():
         if curve_ids is None or len(curve_ids) == 0:
             curve_total, curves = get_page_curves_by_conditions(pagesize, page, conditions_dict)
         else:
-            curve_total, curves = get_page_curves_by_ids(pagesize, page, curve_ids)
+            curve_total, curves = get_page_curves_by_ids(pagesize, page, curve_ids, conditions_dict)
 
         print(curves)
-        if len(curves) != 0 :
+        if len(curves) != 0:
             start_ts = post_data.get('start_ts')
             start_ts = int(start_ts) \
                 if start_ts is not None \

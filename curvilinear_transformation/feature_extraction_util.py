@@ -138,7 +138,7 @@ class FrequencyDomainFeatureExtraction:
     def get_frequency_domain_feature(data, sampling_frequency):
         """
         批式提取 4个 频域特征
-        ["重心频率","平均频率","均方根频率","频率方差"]
+        ["重心频率","平均频率","均方根频率","频率方差"，"频率三次矩", "频率四次矩"]
         @param data: shape 为 (m, n) 的 2D array 数据，其中，m 为样本个数， n 为样本（信号）长度
         @param sampling_frequency: 采样频率
         @return: shape 为 (m, 4)  的 2D array 数据，其中，m 为样本个数。即 每个样本的4个频域特征
