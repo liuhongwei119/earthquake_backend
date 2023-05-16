@@ -144,7 +144,6 @@ def get_point_page():
             curve_total, curves = get_page_curves_by_conditions(pagesize, page, conditions_dict)
         else:
             curve_total, curves = get_page_curves_by_ids(pagesize, page, curve_ids, conditions_dict)
-
         print(curves)
         if len(curves) != 0:
             start_ts = post_data.get('start_ts')
@@ -170,9 +169,9 @@ def get_point_page():
                     }
                 )
                 curve["points"] = curve_points[curve_id].get("raw_data_list")
-
+                curve["ts_list"] = curve_points[curve_id].get("ts_list")
         response_object['message'] = '分页序列查询成功!'
-        response_object['data'] = curves  # 当前页面数据
+        response_object['res'] = packaging_get_point_page(curves)  # 当前页面数据
         response_object['pagesize'] = pagesize  # 页面size
         response_object['page'] = page  # 当前页码
         response_object['curve_total'] = curve_total  # 结果数量总和
@@ -181,6 +180,20 @@ def get_point_page():
         return gzip_compress_response(response_object)
         # return response_object
 
+def packaging_get_point_page(curves):
+    res_dict = {}
+    for curve in curves:
+        curve_id = curve["curve_id"]
+        points_list = curve["points"]
+        ts_list = curve["ts_list"]
+        res_dict[curve_id] = {}
+        del curve["points"]
+        del curve["ts_list"]
+        res_dict[curve_id]["curve_info"] = curve
+        res_dict[curve_id]["points_info"] = {}
+        res_dict[curve_id]["points_info"]["raw_datas"] = points_list
+        res_dict[curve_id]["points_info"]["ts_list"] = ts_list
+    return  res_dict
 
 def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
     """
