@@ -192,7 +192,7 @@ def packaging_get_point_page(curves):
         res_dict[curve_id]["curve_info"] = curve
         res_dict[curve_id]["points_info"] = {}
         res_dict[curve_id]["points_info"]["raw_datas"] = points_list
-        res_dict[curve_id]["points_info"]["ts_list"] = ts_list
+        res_dict[curve_id]["points_info"]["ts"] = ts_list
     return  res_dict
 
 def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
