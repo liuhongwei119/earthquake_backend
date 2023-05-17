@@ -7,7 +7,7 @@ from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curv
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
     get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
     transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time, do_filtering_data \
-    , get_page_curves_by_conditions, get_page_curves_by_ids
+    , get_page_curves_by_conditions, get_page_curves_by_ids, delete_curve_with_id, delete_curve_with_file_name
 from flask import request
 from exts import db
 import time
@@ -123,6 +123,39 @@ def get_curve_page():
         return response_object
 
 
+@bp.route("/delete_curve_by_id", methods=['POST'])
+def delete_curve_by_id():
+    """
+    """
+    response_object = {'status': 'delete success'}
+    if request.method == 'POST':
+        args_str = request.form.get("args", "{}")
+        post_data = json.loads(args_str)
+
+        print('调用query方传过来的参数是', post_data)
+        curve_id = post_data.get('curve_id')
+        file_name = get_file_name_by_curve_id(curve_id)
+        if file_name != None:
+            delete_curve_with_file_name(file_name)
+
+        return response_object
+
+
+@bp.route("/delete_curve_by_file", methods=['POST'])
+def delete_curve_by_file():
+    """
+    """
+    response_object = {'status': 'delete success'}
+    if request.method == 'POST':
+        args_str = request.form.get("args", "{}")
+        post_data = json.loads(args_str)
+        print('调用query方传过来的参数是', post_data)
+        file_name = post_data.get('file_name')
+        delete_curve_with_file_name(file_name)
+
+        return response_object
+
+
 # TODO ======================curve info and points=========================
 
 
@@ -180,6 +213,7 @@ def get_point_page():
         return gzip_compress_response(response_object)
         # return response_object
 
+
 def packaging_get_point_page(curves):
     res_dict = {}
     for curve in curves:
@@ -193,7 +227,8 @@ def packaging_get_point_page(curves):
         res_dict[curve_id]["points_info"] = {}
         res_dict[curve_id]["points_info"]["raw_datas"] = points_list
         res_dict[curve_id]["points_info"]["ts"] = ts_list
-    return  res_dict
+    return res_dict
+
 
 def build_get_points_arg(curve_ids, start_ts, end_ts, filters, window, fields):
     """
