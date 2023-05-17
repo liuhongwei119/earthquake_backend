@@ -277,12 +277,11 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None)
         curves = CurveEntity.query.order_by(CurveEntity.file_name).offset(offset).limit(pagesize).all()
     else:
         total_curves = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
-        print(total_curves)
-        curves = total_curves[offset:offset + pagesize]
+        # print(total_curves)
+        # curves = total_curves[offset:offset + pagesize]
 
-    curve_list_temp = list(map(lambda x: x.convert_to_dict(), curves))
+    curve_list_temp = list(map(lambda x: x.convert_to_dict(), total_curves))
     curve_list = []
-    list
     for index, curve in enumerate(curve_list_temp):
         del_flag = 0
         for condition_name, condition_value in conditions_dict.items():
@@ -296,7 +295,8 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None)
                 break
         if del_flag == 0:
             curve_list.append(curve)
-    return len(curve_list), curve_list
+    curves = curve_list[offset:offset + pagesize]
+    return len(curves), curves
 
 
 def get_curves_with_or_condition(arg_dict):
