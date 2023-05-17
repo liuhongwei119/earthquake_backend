@@ -149,7 +149,7 @@ def get_point_page():
             start_ts = post_data.get('start_ts')
             start_ts = int(start_ts) \
                 if start_ts is not None \
-                else max(list(map(lambda x: x.get('start_ts'), curves)))
+                else min(list(map(lambda x: x.get('start_ts'), curves)))
             end_ts = post_data.get('end_ts')
             end_ts = int(end_ts) \
                 if end_ts is not None \
