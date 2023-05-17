@@ -280,12 +280,22 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None)
         print(total_curves)
         curves = total_curves[offset:offset + pagesize]
 
-    curve_list = list(map(lambda x: x.convert_to_dict(), curves))
-    curve_list_temp = curve_list.copy()
+    curve_list_temp = list(map(lambda x: x.convert_to_dict(), curves))
+    curve_list = []
+    list
     for index, curve in enumerate(curve_list_temp):
-        for condition_name , condition_value in conditions_dict.items():
-            if curve[condition_name] != condition_value:
-                del curve_list[index]
+        del_flag = 0
+        for condition_name, condition_value in conditions_dict.items():
+            if type(condition_value) == list:
+                # 判断channel参数
+                if curve[condition_name] not in condition_value:
+                    del_flag = 1
+            elif curve[condition_name] != condition_value:
+                # 其他参数都是str
+                del_flag = 1
+                break
+        if del_flag == 0:
+            curve_list.append(curve)
     return len(total_curves), curve_list
 
 

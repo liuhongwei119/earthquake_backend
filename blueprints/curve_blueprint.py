@@ -423,6 +423,8 @@ def search_curves_in_same_file():
 @bp.route("/upload_test")
 def test_curve_upload():
     dump_one_curve("XJ.ALS.00.20221016085608.mseed")
+    dump_one_curve("XJ.AHQ.00.20221016085459.mseed")
+    dump_one_curve("XJ.ATS.00.20221016085504.mseed")
     rst = jsonify({"status": 200})
     return rst
 
