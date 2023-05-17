@@ -7,7 +7,7 @@ from dao import dump_one_curve, get_curve_points_by_influx, get_curves, get_curv
     get_curves_with_and_condition, check_params, get_curve_points_by_tdengine, get_file_name_by_curve_id, \
     get_curve_ids_by_file_name, gzip_compress_response, pretreatment_points, build_pretreatment_args, \
     transformation_points, time_and_frequency_feature_extraction, chang_curve_p_s_start_time, do_filtering_data \
-    , get_page_curves_by_conditions, get_page_curves_by_ids, delete_curve_with_id, delete_curve_with_file_name
+    , get_page_curves_by_conditions, get_page_curves_by_ids, delete_curve_with_file_list
 from flask import request
 from exts import db
 import time
@@ -133,11 +133,13 @@ def delete_curve_by_id():
         post_data = json.loads(args_str)
 
         print('调用query方传过来的参数是', post_data)
-        curve_id = post_data.get('curve_id')
-        file_name = get_file_name_by_curve_id(curve_id)
-        if file_name != None:
-            delete_curve_with_file_name(file_name)
-
+        curve_ids = post_data.get('curve_ids')
+        file_list = set()
+        for curve_id in curve_ids:
+            file_name = get_file_name_by_curve_id(curve_id)
+            if file_name is not None:
+                file_list.add(file_name)
+        delete_curve_with_file_list(list(file_list))
         return response_object
 
 
@@ -150,8 +152,8 @@ def delete_curve_by_file():
         args_str = request.form.get("args", "{}")
         post_data = json.loads(args_str)
         print('调用query方传过来的参数是', post_data)
-        file_name = post_data.get('file_name')
-        delete_curve_with_file_name(file_name)
+        file_list = post_data.get('file_list')
+        delete_curve_with_file_list(file_list)
 
         return response_object
 

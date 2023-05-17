@@ -857,6 +857,9 @@ def delete_curve_with_id(curve_id):
     db.session.commit()
 
 
-def delete_curve_with_file_name(file_name):
-    CurveEntity.query.filter_by(file_name=file_name).delete()
-    db.session.commit()
+def delete_curve_with_file_list(file_list):
+    try:
+        CurveEntity.query.filter(CurveEntity.file_name.in_(file_list)).delete()
+        db.session.commit()
+    except BaseException:
+        print("删除曲线出现错误")
