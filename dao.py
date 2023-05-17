@@ -296,7 +296,7 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None)
         if del_flag == 0:
             curve_list.append(curve)
     curves = curve_list[offset:offset + pagesize]
-    return len(curves), curves
+    return len(curve_list), curves
 
 
 def get_curves_with_or_condition(arg_dict):
