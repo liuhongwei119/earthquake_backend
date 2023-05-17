@@ -353,8 +353,14 @@ def get_file_name_by_curve_id(curve_id):
     curve_id
     return file_name
     """
-    file_name = CurveEntity.query.with_entities(CurveEntity.file_name).filter(CurveEntity.curve_id == curve_id).first()
-    return file_name[0]
+    try:
+        file_name = CurveEntity.query.with_entities(CurveEntity.file_name).filter(
+            CurveEntity.curve_id == curve_id).first()
+        return file_name[0]
+    except BaseException:
+        return None
+
+
 
 
 def get_curve_ids_by_file_name(file_name):
@@ -844,3 +850,13 @@ def do_filtering_data(curve_points_dicts, args):
                                                 corners=int(filter_args[2]),
                                                 zerophase=filter_args[3] == "True").tolist()
         points_info["raw_datas"] = filtered_data
+
+
+def delete_curve_with_id(curve_id):
+    CurveEntity.query.filter_by(curve_id=curve_id).delete()
+    db.session.commit()
+
+
+def delete_curve_with_file_name(file_name):
+    CurveEntity.query.filter_by(file_name=file_name).delete()
+    db.session.commit()
