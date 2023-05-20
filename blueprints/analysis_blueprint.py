@@ -13,6 +13,7 @@ bp = Blueprint("offline_curve_analysis", __name__, url_prefix="/offline_curve_an
 # 时频图存放路径文件夹
 tf_pngs_dir_path = os.path.realpath("time_frequency_pngs")
 
+
 @bp.route('/tf_pngs', methods=['GET'])
 def get_tf_png():
     """
@@ -61,6 +62,8 @@ def get_time_domain_info():
     current_app.logger.info(args)
 
     curve_infos = get_pretreatment_data(args)
+    if curve_infos is None:
+        return {"res": "curve_id is empty", "status": 405}
 
     query_end_time = time.time()
     res = {"res": curve_infos, "status": 200, "cost_time": query_end_time - query_start_time}
@@ -100,6 +103,8 @@ def get_feature_extraction_info():
 
     # 根据参数预处理
     curve_infos = get_pretreatment_data(args)
+    if curve_infos is None:
+        return {"res": "curve_id is empty", "status": 405}
     # 特征提取
     get_feature_extraction_curve(curve_infos)
 
@@ -141,6 +146,8 @@ def get_frequency_domain_info():
 
     # 根据参数预处理
     curve_infos = get_pretreatment_data(args)
+    if curve_infos is None:
+        return {"res": "curve_id is empty", "status": 405}
     # 获取时频图
     get_frequency_domain_curve(curve_infos)
 
@@ -182,6 +189,8 @@ def get_time_frequency_info():
 
     # 根据参数预处理
     curve_infos = get_pretreatment_data(args)
+    if curve_infos is None:
+        return {"res": "curve_id is empty", "status": 405}
     # 获取时频图
     t_f_png_name = get_time_frequency_curve(curve_infos)
 
@@ -192,7 +201,10 @@ def get_time_frequency_info():
 
 def get_pretreatment_data(args):
     # 通过mysql查询获取curve曲线信息（曲线信息存储在mysql，曲线点信息存储在tdengine）
-    curve_infos = get_curves(args.get("curve_ids", []))
+    ids = args.get("curve_ids", [])
+    if ids is None or len(ids) == 0:
+        return None
+    curve_infos = get_curves()
     curve_ids = curve_infos.keys()
 
     # 设置相关参数及其默认值
