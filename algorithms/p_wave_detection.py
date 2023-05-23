@@ -17,7 +17,6 @@ def pick_wave_with_single_channel(single_channel_data, sampling_rate, start_time
             break
     p_start_time = start_time + datetime.timedelta(seconds=p_start_time / sampling_rate)
     s_start_time = start_time + datetime.timedelta(seconds=s_start_time / sampling_rate)
-    print(f"p_start_time : {p_start_time}, s_start_time: {s_start_time}")
     # 一般由于传递介质不同，地震发生时 p波开始时间 一定早于s_start_time
     if p_start_time < s_start_time:
         # 地震发生
