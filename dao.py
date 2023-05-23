@@ -112,13 +112,6 @@ class WriteTDengineThread(threading.Thread):
         curve_points = []
 
         ts_list = split_time_ranges(self.curve_stats.start_time, self.curve_stats.end_time, len(self.data_list))
-        # test time
-        # current_app.logger.info(type(ts_list[0].to_pydatetime()))
-        # with open("ts_list.txt", "w") as f:
-        #     for ts in ts_list:
-        #         a = str(ts.to_pydatetime().timestamp())
-        #         f.write(str(a.split(".")[0] + str(str(a.split(".")[1].ljust(6,"0")))))
-        #         f.write("\n")
         for index in range(len(self.data_list)):
             curve_point = PointEntity(network=self.curve_stats.network,
                                       station=self.curve_stats.station,

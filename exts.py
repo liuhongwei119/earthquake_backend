@@ -10,7 +10,9 @@
 
 from flask_sqlalchemy import SQLAlchemy
 from log_handler import Logger
+from flask_socketio import SocketIO
 
 db = SQLAlchemy()
 logger = Logger()
+socketio = SocketIO()
 

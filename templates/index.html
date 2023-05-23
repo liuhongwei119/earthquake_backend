@@ -13,9 +13,10 @@
 <script>
     $(document).ready(function () {
         namespace = "/wechat"
-        url = 'http://' + document.domain + ':' + 5000 + namespace
-        var socket = io.connect(url);
+        url = location.protocol + '//' + document.domain + ':' + location.port + namespace
         console.log(url)
+        var socket = io.connect(url);
+        console.log(socket)
 
         socket.emit("message", {"data": "zhangsan"})
 
