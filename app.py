@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -15,6 +16,7 @@ from kafka import KafkaConsumer
 from obspy import read
 import config
 from algorithms.p_wave_detection import pick_wave_with_single_channel
+from util import convert_utc_to_datetime
 
 app = create_app()
 socketio = SocketIO(app)
@@ -74,6 +76,7 @@ def imitate_mseed_task():
                 stream = read(file_path)
                 # 处理stream对象
                 start_time = stream[0].stats.starttime
+                end_time = stream[0].stats.endtime
                 stime = stream[0].stats.starttime.datetime
                 channel_data = stream[0].data
                 curve_id = stream[0].id
@@ -89,8 +92,17 @@ def imitate_mseed_task():
                     sampling_rate=sampling_rate,
                     start_time=start_time)
                 # TODO websocket 通知前端告知台站收到数据
-                msg = f"{curve_id}_{flag}_{p_start_time}_{s_start_time}"
-                socketio.emit("real_time_monitor", msg, namespace=realtime_info_room)
+                msg = {
+                    "type": "danger" if flag == True else "normal",
+                    "channel": channel,
+                    "location": location,
+                    "station": station,
+                    "network": network,
+                    "sampling_rate": sampling_rate,
+                    "start_time": str(convert_utc_to_datetime(start_time)),
+                    "end_time": str(convert_utc_to_datetime(end_time))
+                }
+                socketio.emit("real_time_monitor", json.dumps(msg), namespace=realtime_info_room)
                 time.sleep(1)
                 if flag:
                     # 出现地震
