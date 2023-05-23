@@ -128,19 +128,18 @@ def delete_curve_by_id():
     """
     """
     response_object = {'status': 'delete success'}
-    if request.method == 'POST':
-        args_str = request.form.get("args", "{}")
-        post_data = json.loads(args_str)
+    args_str = request.form.get("args", "{}")
+    post_data = json.loads(args_str)
 
-        print('调用query方传过来的参数是', post_data)
-        curve_ids = post_data.get('curve_ids')
-        file_list = set()
-        for curve_id in curve_ids:
-            file_name = get_file_name_by_curve_id(curve_id)
-            if file_name is not None:
-                file_list.add(file_name)
-        delete_curve_with_file_list(list(file_list))
-        return response_object
+    current_app.logger.info('调用query方传过来的参数是', post_data)
+    curve_ids = post_data.get("curve_ids")
+    file_list = set()
+    for curve_id in curve_ids:
+        file_name = get_file_name_by_curve_id(curve_id)
+        if file_name is not None:
+            file_list.add(file_name)
+    delete_curve_with_file_list(list(file_list))
+    return response_object
 
 
 @bp.route("/delete_curve_by_file", methods=['POST'])
@@ -148,14 +147,13 @@ def delete_curve_by_file():
     """
     """
     response_object = {'status': 'delete success'}
-    if request.method == 'POST':
-        args_str = request.form.get("args", "{}")
-        post_data = json.loads(args_str)
-        print('调用query方传过来的参数是', post_data)
-        file_list = post_data.get('file_list')
-        delete_curve_with_file_list(file_list)
+    args_str = request.form.get("args", "{}")
+    post_data = json.loads(args_str)
+    current_app.logger.info('调用query方传过来的参数是', post_data)
+    file_list = post_data.get("file_list")
+    delete_curve_with_file_list(file_list)
 
-        return response_object
+    return response_object
 
 
 # TODO ======================curve info and points=========================
