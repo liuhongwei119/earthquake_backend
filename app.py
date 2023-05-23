@@ -21,6 +21,7 @@ socketio = SocketIO(app)
 socketio.init_app(app, cors_allowed_origins='*')
 realtime_info_room = "/realtime_info"  # 实时数据websocket命名传输Room名称
 request_sids = set()
+tasks = []
 
 @app.route('/')
 def index():
@@ -34,10 +35,12 @@ def test_send():
         socketio.emit("test_send", "test_send", namespace=realtime_info_room)
     return "test_send"
 
+
 @socketio.on('message', namespace=realtime_info_room)
 def handle_message(message):
     print('received message: ' + message['data'])
     socketio.emit("response", {'age': 18}, namespace=realtime_info_room)
+
 
 @socketio.on('connect', namespace=realtime_info_room)
 def connect():
@@ -45,16 +48,19 @@ def connect():
     request_sids.add(request.sid)
     print(os.getcwd())  # 获得当前工作目录
     socketio.emit("connect", "start receive realtime data", namespace=realtime_info_room)
-    if len(request_sids) == 1:
+
+    if len(tasks) == 0:
         # handle_realtime_mseed = RealTimeMseedTask()
         # handle_realtime_mseed.start()
         handle_test_realtime_mseed = ImitateTimeMseedTask()
         handle_test_realtime_mseed.start()
+        tasks.append(handle_test_realtime_mseed)
 
 
 @socketio.on('disconnect', namespace=realtime_info_room)
 def disconnect():
     print("backend disconnect...")
+
 
 class ImitateTimeMseedTask(threading.Thread):
 
@@ -89,8 +95,8 @@ class ImitateTimeMseedTask(threading.Thread):
                         start_time=start_time)
                     # TODO websocket 通知前端告知台站收到数据
                     msg = f"{curve_id}_{flag}_{p_start_time}_{s_start_time}"
-                    socketio.emit("real_time_monitor", msg, namespace=realtime_info_room)
-                    time.sleep(5)
+                    socketio.emit("real_time_monitor", msg, namespace=realtime_info_room, broadcast=True)
+                    time.sleep(1)
                     if flag:
                         # 出现地震
                         print("地震来了")
@@ -102,6 +108,7 @@ class ImitateTimeMseedTask(threading.Thread):
 
         except Exception as e:
             logging.error(e)
+
 
 class RealTimeMseedTask(threading.Thread):
     # handle_realtime_mseed
