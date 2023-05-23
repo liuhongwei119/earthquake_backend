@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SocketIO Demo</title>
+    <script type="text/javascript" src="//cdn.bootcss.com/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.socket.io/3.1.2/socket.io.js"></script>
+</head>
+<body>
+
+<h2>Demo of SocketIO</h2>
+<div id="t"></div>
+<script>
+    $(document).ready(function () {
+        namespace = "/realtime_info"
+        url = location.protocol + '//' + document.domain + ':' + location.port + namespace
+        console.log(url)
+        var socket = io.connect(url);
+        console.log(socket)
+
+        socket.emit("message", {"data": "zhangsan"})
+
+        socket.on('connect', function (data) {
+            console.log('web connect')
+            console.log(data)
+        });
+
+        socket.on('disconnect', function (data) {
+            console.log('web disconnect')
+        });
+
+        socket.on('response', function (data) {
+            console.log(data)
+        });
+        socket.on('real_time_monitor', function (data) {
+            console.log(data)
+            var t = data;
+            if (t) {
+            $("#t").append(t).append('<br/>');
+        }
+        });
+
+        socket.on('test_send', function (data) {
+            console.log(data)
+        });
+    });
+</script>
+</body>
+</html>
