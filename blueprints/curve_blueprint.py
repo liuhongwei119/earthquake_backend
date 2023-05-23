@@ -132,7 +132,7 @@ def delete_curve_by_id():
         args_str = request.form.get("args", "{}")
         post_data = json.loads(args_str)
 
-        print('调用query方传过来的参数是', post_data)
+        current_app.logger.info('调用query方传过来的参数是', post_data)
         curve_ids = post_data.get('curve_ids')
         file_list = set()
         for curve_id in curve_ids:
@@ -151,7 +151,7 @@ def delete_curve_by_file():
     if request.method == 'POST':
         args_str = request.form.get("args", "{}")
         post_data = json.loads(args_str)
-        print('调用query方传过来的参数是', post_data)
+        urrent_app.logger.info('调用query方传过来的参数是', post_data)
         file_list = post_data.get('file_list')
         delete_curve_with_file_list(file_list)
 
