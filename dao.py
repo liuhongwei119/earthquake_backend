@@ -165,6 +165,7 @@ def dump_one_curve(file_path):
                                   )
         db.session.add(earth_curve)
     db.session.commit()
+    db.session.close()
 
     # TODO dump curve points to influxDB
     # write_influxDb_threads = []
@@ -238,6 +239,7 @@ def get_curves(curve_ids=None):
     else:
         curve_infos = CurveEntity.query.filter(CurveEntity.curve_id.in_(curve_ids)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
+    db.session.close()
     return format_curve_infos_res(curve_infos)
 
 
@@ -254,6 +256,7 @@ def get_page_curves_by_conditions(pagesize, page, conditions_dict):
     total_curves = CurveEntity.query.filter(and_(*query_list)).all()
     curves = total_curves[offset:offset + pagesize]
     curve_list = list(map(lambda x: x.convert_to_dict(), curves))
+    db.session.close()
     return len(total_curves), curve_list
 
 
@@ -289,6 +292,7 @@ def get_page_curves_by_ids(pagesize, page, curve_ids=None, conditions_dict=None)
         if del_flag == 0:
             curve_list.append(curve)
     curves = curve_list[offset:offset + pagesize]
+    db.session.close()
     return len(curve_list), curves
 
 
@@ -314,6 +318,7 @@ def get_curves_with_or_condition(arg_dict):
 
     curve_infos = CurveEntity.query.filter(or_(*query_list)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
+    db.session.close()
     return format_curve_infos_res(curve_infos)
 
 
@@ -338,6 +343,7 @@ def get_curves_with_and_condition(arg_dict):
         query_list.append(condition_fields[field_name] == field_value)
     curve_infos = CurveEntity.query.filter(and_(*query_list)).all()
     curve_infos = list(map(lambda x: x.convert_to_dict(), curve_infos))
+    db.session.close()
     return format_curve_infos_res(curve_infos)
 
 
@@ -349,6 +355,7 @@ def get_file_name_by_curve_id(curve_id):
     try:
         file_name = CurveEntity.query.with_entities(CurveEntity.file_name).filter(
             CurveEntity.curve_id == curve_id).first()
+        db.session.close()
         return file_name[0]
     except BaseException:
         return None
@@ -362,6 +369,7 @@ def get_curve_ids_by_file_name(file_name):
     return curve_ids
     """
     curve_ids = CurveEntity.query.with_entities(CurveEntity.curve_id).filter(CurveEntity.file_name == file_name).all()
+    db.session.close()
     return list(map(lambda x: x[0], curve_ids))
 
 
@@ -369,6 +377,7 @@ def chang_curve_p_s_start_time(curve_id, p_start_date, s_start_date):
     CurveEntity.query.filter_by(curve_id=curve_id).update({'p_start_time': p_start_date, "s_start_time": s_start_date})
     # 使用sqlalchemy 更新p波s波起点
     db.session.commit()
+    db.session.close()
 
 
 # TODO ======================points part=========================
