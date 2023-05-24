@@ -24,7 +24,12 @@ def get_tf_png():
     png_addr = os.path.join(tf_pngs_dir_path, png_name)
 
     current_app.logger.info(f"get png from {png_addr}")
-    image_data = open(png_addr, "rb").read()
+    try:
+        image_data = open(png_addr, "rb").read()
+    except Exception as e:
+        current_app.logger.error("open tf_png error")
+        image_data = open("t_f_error.png", "rb").read()
+        current_app.logger.error(e)
     response = make_response(image_data)
     response.headers['Content-Type'] = 'image/png'  # 返回的内容类型必须修改
     return response
