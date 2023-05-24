@@ -17,7 +17,7 @@ from obspy import read
 import config
 from algorithms.p_wave_detection import pick_wave_with_single_channel
 from util import convert_utc_to_datetime
-
+import random
 app = create_app()
 socketio = SocketIO(app)
 socketio.init_app(app, cors_allowed_origins='*')
@@ -92,8 +92,9 @@ def imitate_mseed_task():
                     sampling_rate=sampling_rate,
                     start_time=start_time)
                 # TODO websocket 通知前端告知台站收到数据
+                ret = random.choice(range(1, 101))
                 msg = {
-                    "type": "danger" if flag == True else "normal",
+                    "type": "danger" if ret < 5 else "normal",
                     "channel": channel,
                     "location": location,
                     "station": station,
@@ -102,8 +103,9 @@ def imitate_mseed_task():
                     "start_time": str(convert_utc_to_datetime(start_time)),
                     "end_time": str(convert_utc_to_datetime(end_time))
                 }
+
+                # 模拟数据 随机匹配到国内台站
                 socketio.emit("real_time_monitor", json.dumps(msg), namespace=realtime_info_room)
-                time.sleep(1)
                 if flag:
                     # 出现地震
                     print("地震来了")
@@ -111,7 +113,7 @@ def imitate_mseed_task():
 
                     # TODO 震级检测算法
 
-                socketio.sleep(1)
+
 
     except Exception as e:
         logging.error(e)
