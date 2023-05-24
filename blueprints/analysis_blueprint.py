@@ -153,7 +153,7 @@ def get_frequency_domain_info():
     curve_infos = get_pretreatment_data(args)
     if curve_infos is None:
         return {"res": "curve_id is empty", "status": 405}
-    # 获取时频图
+    # 获
     get_frequency_domain_curve(curve_infos)
 
     query_end_time = time.time()
@@ -209,7 +209,7 @@ def get_pretreatment_data(args):
     ids = args.get("curve_ids", [])
     if ids is None or len(ids) == 0:
         return None
-    curve_infos = get_curves()
+    curve_infos = get_curves(curve_ids=ids)
     curve_ids = curve_infos.keys()
 
     # 设置相关参数及其默认值
